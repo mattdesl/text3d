@@ -18,9 +18,8 @@ var stats = require('stats');
 var PerspectiveCamera = require('cam3d').PerspectiveCamera;
 
 domready(function() {
-    var width = 500,
+    var width = window.innerWidth,
         height = 500;
-
 
     var canvas = document.createElement("canvas");
     canvas.width = width;
@@ -41,13 +40,37 @@ domready(function() {
 
     requestAnimationFrame(render);
 
-    var face = util.getFace('canter');
+    var face = util.getFace('Uni Sans Bold');
 
     var fontSize = 128;
 
-    Glyph.SAVE_CONTOUR = false;
-    var text = new Text3D("WORK\nABOUT", face, fontSize, 10, 2);
+    Glyph.SAVE_CONTOUR = true;
+    var text = new Text3D("o", face, fontSize, 10, 3);
 
+
+    //Give each char a "Config"
+    //This is only useful for problematic fonts that
+    //use unusual winding rules (e.g. Uni Sans)
+    
+    /*
+    
+    B 
+      - path 
+      - hole
+      - hole
+
+    i
+      - path
+      - path
+
+    G
+      - path
+    
+    o 
+      - path
+      - hole
+
+     */
 
     var tmp = new Vector3();
     var tmp2 = new Vector3();
@@ -56,6 +79,9 @@ domready(function() {
     var deform = new Matrix4();
 
     var time = 0;
+    var resetting = false,
+        resetTime = 0,
+        resetDuration = 1000;
 
     var shockParams = new Vector3(10, 0.7, 0.1);
     var mouse = new Vector3();
@@ -83,6 +109,16 @@ domready(function() {
     //destroy the text object to free up some memory
     text.destroy();
 
+    var zero = new Vector3();
+
+    function easeOutExpo (t, b, c, d) {
+        return (t==d) ? b+c : c * (-Math.pow(2, -10 * t/d) + 1) + b;
+    };
+
+    window.addEventListener("keydown", function(ev) {
+        resetTime = 0;
+        resetting = true;
+    }, true);
 
     window.addEventListener("mousedown", function(ev) {
         mouse.x = ev.pageX;
@@ -92,21 +128,60 @@ domready(function() {
         mouseForce(mouse, true);
     }, true);
 
+    window.addEventListener("touchstart", function(ev) {
+        ev.preventDefault();
+        mouse.x = ev.changedTouches[0].clientX;
+        mouse.y = ev.changedTouches[0].clientY;
+
+
+        mouseForce(mouse, true);
+    }, true);
+
+    window.addEventListener("touchmove", function(ev) {
+        ev.preventDefault();
+        mouse.x = ev.changedTouches[0].clientX;
+        mouse.y = ev.changedTouches[0].clientY;
+
+
+        mouseForce(mouse, true);
+    }, true);
 
     window.addEventListener("mousemove", function(ev) {
         mouse.x = ev.pageX;
         mouse.y = ev.pageY;
 
+        resetting = false;
+        resetTime = 0;
 
-        mouseForce(mouse);
+        mouseForce(mouse, true);
     }, true);
 
     function render() {
         time += 0.01;
-        // stats.begin();
+
+        stats.begin();
         
         world.step(0.1);
 
+        if (resetting) {
+            resetTime += 0.1;
+            if (resetTime > resetDuration) {
+                resetting = false;
+            } else {
+                for (var i=0; i<world.particles.length; i++) {
+                    var p = world.particles[i];
+                    var a = resetTime / resetDuration;
+
+
+                    a = easeOutExpo(resetTime, 0, 1, resetDuration);
+
+                    p.position.lerp(p.original, a);
+                    p.velocity.lerp(zero, a);
+                    p.acceleration.lerp(zero, a);
+                }
+            }
+        }
+            
 
         rotation += 0.01;
         orbitCamera();
@@ -129,12 +204,12 @@ domready(function() {
         // for (var i=0; i<text.glyphs.length; i++)
         //     drawGlyph(context, text.bounds, text.glyphs[i], false, deformAmount);
 
-        // drawPoints(context, world.particles);
+        //drawPoints(context, world.particles);
         drawTriangles(context, world.particles, true, false);
 
         context.restore();
 
-        // stats.end(statsDOM);
+        stats.end(statsDOM);
     }
 
     function mouseForce(mouse, explode) {

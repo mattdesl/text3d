@@ -50,6 +50,8 @@ var World = new Class({
                 velocity: new Vector3(),
                 acceleration: new Vector3(),
 
+                original: new Vector3(point),
+
                 mass: mass,
                 restitution: restitution,
                 restingDistance: 0,
