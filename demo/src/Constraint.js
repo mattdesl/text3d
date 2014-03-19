@@ -2,7 +2,6 @@ var Class = require('klasse');
 
 var Vector3 = require('vecmath').Vector3;
 
-
 var tmp = new Vector3();
 
 /**

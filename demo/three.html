@@ -23,9 +23,8 @@
  -->
 		<!-- load the font file from canvas-text -->
 
-		<script src="vendor/canter_bold.typeface.js"></script>
+		<script src="vendor/uni_sans_bold_B.typeface.js"></script>
 		<script src="vendor/uni_sans_bold.typeface.js"></script>
-		<script src="vendor/optimer.typeface.js"></script>
 
 
 		<script>
@@ -68,7 +67,7 @@
 
 				// Get text from hash
 
-				var theText = "Hello three.js! :)";
+				var theText = "ijlmnopQRTS";
 
 				var hash = document.location.hash.substr( 1 );
 
@@ -83,15 +82,21 @@
 					size: 80,
 					height: 20,
 					curveSegments: 2,
+
+					//VERSION A: uni_sans_bold.typeface.js
 					font: "uni sans bold",
-					// weight: "bold",
+					weight: "bold",
+
+					///VERSION B: uni_sans_bold_B.typeface.js
+					// font: "uni sans bold",
+					// weight: "normal",
 
 				});
 
 				text3d.computeBoundingBox();
 				var centerOffset = -0.5 * ( text3d.boundingBox.max.x - text3d.boundingBox.min.x );
 
-				var textMaterial = new THREE.MeshBasicMaterial( { color: Math.random() * 0xffffff, overdraw: true } );
+				var textMaterial = new THREE.MeshBasicMaterial( { color: Math.random() * 0xffffff,  } );
 				text = new THREE.Mesh( text3d, textMaterial );
 
 				text.position.x = centerOffset;
