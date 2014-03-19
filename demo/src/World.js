@@ -51,6 +51,8 @@ var World = new Class({
                 acceleration: new Vector3(),
 
                 original: new Vector3(point),
+                lastPosition: new Vector3(point),
+                resetting: false,
 
                 mass: mass,
                 restitution: restitution,
