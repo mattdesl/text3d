@@ -18,6 +18,11 @@ var Text3D = require('text3d').Text3D;
 var OrthographicCamera = require('cam3d').OrthographicCamera;
 var PerspectiveCamera = require('cam3d').PerspectiveCamera;
 
+var _typeface_js = require('./typeface-stripped');
+var uni_sans = require('../vendor/uni_sans_bold_B.typeface');
+
+window._typeface_js = _typeface_js;
+_typeface_js.loadFace(uni_sans);
 
 module.exports = function() {
     var width = window.innerWidth,
@@ -41,18 +46,18 @@ module.exports = function() {
     statsDOM.style.top = "0";
     statsDOM.style.left = "0";
     statsDOM.innerHTML= "FPS";
-    document.body.appendChild(statsDOM);
+    // document.body.appendChild(statsDOM);
 
     requestAnimationFrame(render);
 
     var face = util.getFace('uni sans bold');
 
-    var fontSize = 127;
+    var fontSize = 100;
 
     Glyph.SAVE_CONTOUR = false;
     var simp = Math.max(1, fontSize/50);
 
-    var text = new Text3D("CRAFT.\nTECHNOLOGY.\nEXPLOSIONS.", face, fontSize, 10, 3);
+    var text = new Text3D("STORYTELLING.\nCRAFT. EXPLOSIONS.", face, fontSize, 10, 3);
     console.log(text.text.length);
 
     //Give each char a "Config"
@@ -84,6 +89,9 @@ module.exports = function() {
     var camera = new OrthographicCamera();
     camera.setToOrtho(false, width, height);
     // camera.setToOrtho(false, fontSize, fontSize / width/height);
+
+    var w = text.bounds.maxX-text.bounds.minX;
+    // camera.translate( , 0 );
 
     var cameraRadius = 150,
         rotation = 0;
@@ -172,7 +180,7 @@ module.exports = function() {
             var a = resetTime / resetDuration;
             a = easeOutExpo(resetTime, 0, 1, resetDuration);
 
-            if (a > 0.995) //snap to edge
+            if (a > 0.999) //snap to edge
                 a = 1;
 
             resetTime += 0.1;
@@ -234,17 +242,17 @@ module.exports = function() {
 
         context.restore();
 
-        context.fillStyle = 'black';
-        context.fillRect( text.bounds.minX, text.bounds.minY, 5, 5 );
-        context.fillRect( text.bounds.maxX, text.bounds.maxY, 5, 5 );
+        // context.fillStyle = 'black';
+        // context.fillRect( text.bounds.minX, text.bounds.minY, 5, 5 );
+        // context.fillRect( text.bounds.maxX, text.bounds.maxY, 5, 5 );
 
-        for (var i=0; i<text.glyphs.length; i++) {
-            var g = text.glyphs[i];
+        // for (var i=0; i<text.glyphs.length; i++) {
+        //     var g = text.glyphs[i];
 
-            context.fillStyle = 'red';
-            context.fillRect( g.bounds.minX, g.bounds.minY, 4, 4 );
-            context.fillRect( g.bounds.maxX, g.bounds.maxY, 4, 4 );            
-        }
+        //     context.fillStyle = 'red';
+        //     context.fillRect( g.bounds.minX, g.bounds.minY, 4, 4 );
+        //     context.fillRect( g.bounds.maxX, g.bounds.maxY, 4, 4 );            
+        // }
 
 
 
@@ -271,8 +279,6 @@ module.exports = function() {
 
                 if (p.position.distance(mouse) < 50) {
                     
-
-
                     p.velocity.add(tmp);
                 }
 

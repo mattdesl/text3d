@@ -52,7 +52,7 @@ var World = new Class({
 
                 original: new Vector3(point),
                 lastPosition: new Vector3(point),
-                resetting: false,
+                finalPosition: new Vector3(point),
 
                 mass: mass,
                 restitution: restitution,

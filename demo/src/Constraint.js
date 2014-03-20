@@ -19,9 +19,10 @@ var Constraint = new Class({
 		if (typeof restingDistance !== "number")
 			restingDistance = p1.position.distance(p2.position);
 
-        this.originalRestingDistance = this.restingDistance;
+        
 		this.restingDistance = restingDistance;
-		this.stiffness = typeof stiffness === "number" ? stiffness : 0.01;
+		this.originalRestingDistance = this.restingDistance;
+        this.stiffness = typeof stiffness === "number" ? stiffness : 0.01;
         
 
         this.tearDistance = Number.MAX_VALUE;
