@@ -77,7 +77,7 @@ var Constraint = new Class({
 
 
 module.exports = Constraint;
-},{"klasse":43,"vecmath":63}],2:[function(require,module,exports){
+},{"klasse":44,"vecmath":64}],2:[function(require,module,exports){
 // var domready = require('domready');
 // require('raf.js');
 
@@ -116,6 +116,7 @@ var force = new Vector3();
 var fs = require('fs');
 var vert = "attribute vec4 Position;\nattribute vec4 Color;\n// attribute vec2 TexCoord0;\n\nuniform mat4 u_projModelView;\n\nvarying vec4 v_col;\n// varying vec2 v_texCoord0;\n\nvoid main() {\n\tgl_Position = u_projModelView * vec4(Position.xyz, 1.0);\n\tv_col = Color;\n\t// v_texCoord0 = TexCoord0;\n}";
 var frag = "#ifdef GL_ES\nprecision mediump float;\n#endif\nvarying vec4 v_col;\n// varying vec2 v_texCoord0;\n// uniform sampler2D u_sampler0;\n\nvoid main() {\n\tgl_FragColor = v_col; //* texture2D(u_sampler0, v_texCoord0);\n}";
+var fxaa = "/*#ifdef GL_ES\nprecision mediump float;\n#endif\nvarying vec4 vColor;\nvarying vec2 vTexCoord0;\n\nuniform sampler2D u_texture0;\n\nvoid main() {\n    gl_FragColor = vColor * texture2D(u_texture0, vTexCoord0) * 0.5;\n}*/\n\n// FXAA shader, GLSL code adapted from:\n// http://horde3d.org/wiki/index.php5?title=Shading_Technique_-_FXAA\n// Whitepaper describing the technique:\n// http://developer.download.nvidia.com/assets/gamedev/files/sdk/11/FXAA_WhitePaper.pdf\n\n\n#ifdef GL_ES\nprecision mediump float;\nprecision mediump int;\n#endif\n\nuniform sampler2D u_texture0;\n\n// The inverse of the texture dimensions along X and Y\nuniform vec2 texcoordOffset;\n\nvarying vec4 vColor;\nvarying vec2 vTexCoord0;\n\nvoid main() {\n    // The parameters are hardcoded for now, but could be\n    // made into uniforms to control fromt he program.\n    float FXAA_OPT = 125.0;\n    float FXAA_SPAN_MAX = FXAA_OPT;\n    float FXAA_REDUCE_MUL = 1.0/FXAA_OPT;\n    float FXAA_REDUCE_MIN = (1.0/10.0);\n\n    vec3 rgbNW = texture2D(u_texture0, vTexCoord0.xy + (vec2(-1.0, -1.0) * texcoordOffset)).xyz;\n    vec3 rgbNE = texture2D(u_texture0, vTexCoord0.xy + (vec2(+1.0, -1.0) * texcoordOffset)).xyz;\n    vec3 rgbSW = texture2D(u_texture0, vTexCoord0.xy + (vec2(-1.0, +1.0) * texcoordOffset)).xyz;\n    vec3 rgbSE = texture2D(u_texture0, vTexCoord0.xy + (vec2(+1.0, +1.0) * texcoordOffset)).xyz;\n    \n    vec4 rgba = texture2D(u_texture0, vTexCoord0.xy);\n    vec3 rgbM = rgba.xyz;\n\n    vec3 luma = vec3(0.299, 0.587, 0.114);\n    float lumaNW = dot(rgbNW, luma);\n    float lumaNE = dot(rgbNE, luma);\n    float lumaSW = dot(rgbSW, luma);\n    float lumaSE = dot(rgbSE, luma);\n    float lumaM  = dot( rgbM, luma);\n\n    float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));\n    float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));\n\n    vec2 dir;\n    dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));\n    dir.y =  ((lumaNW + lumaSW) - (lumaNE + lumaSE));\n\n    float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) * (0.25 * FXAA_REDUCE_MUL), FXAA_REDUCE_MIN);\n      \n    float rcpDirMin = 1.0/(min(abs(dir.x), abs(dir.y)) + dirReduce);\n\n    dir = min(vec2(FXAA_SPAN_MAX,  FXAA_SPAN_MAX), \n          max(vec2(-FXAA_SPAN_MAX, -FXAA_SPAN_MAX), dir * rcpDirMin)) * texcoordOffset;\n    \t\n    vec3 rgbA = (1.0/2.0) * (\n                texture2D(u_texture0, vTexCoord0.xy + dir * (1.0/3.0 - 0.5)).xyz +\n                texture2D(u_texture0, vTexCoord0.xy + dir * (2.0/3.0 - 0.5)).xyz);\n    vec3 rgbB = rgbA * (1.0/2.0) + (1.0/4.0) * (\n                texture2D(u_texture0, vTexCoord0.xy + dir * (0.0/3.0 - 0.5)).xyz +\n                texture2D(u_texture0, vTexCoord0.xy + dir * (3.0/3.0 - 0.5)).xyz);\n    float lumaB = dot(rgbB, luma);\n\n    if((lumaB < lumaMin) || (lumaB > lumaMax)){\n      gl_FragColor.xyz=rgbA;\n    } else {\n      gl_FragColor.xyz=rgbB;\n    }\n    gl_FragColor.a = rgba.a;\n      \n    gl_FragColor *= vColor;\n}";
 
 //draws the particles as a triangle list
 function drawTriangles(context, particles, camera, fill, noIntersect) {
@@ -181,16 +182,25 @@ function easeOutExpo (t, b, c, d) {
 
 var TextManager = new Class({
 
-    initialize: function(text, options) {
+    initialize: function(text, options, TweenLite) {
         options = options||{};
 
         this.face = util.getFace('uni sans bold');
-        this.fontSize = options.fontSize || 75;
+        this.fontSize = options.fontSize || 50;
 
         this.snap = typeof options.snap === "number" ? options.snap : 0.995;
 
         var steps = typeof options.steps || 10;
-        var simplify = typeof options.simplify === "number" ? options.simplify : Math.max(1, this.fontSize/50);
+        var simplify;
+
+        if (typeof options.simplify === "number") {
+            if (options.simplify === 0)
+                simplify = 0;
+            else
+                simplify = this.fontSize/Math.max(10, options.simplify)
+        } else
+            simplify = this.fontSize/50;
+
         
         Glyph.SAVE_CONTOUR = false;
 
@@ -221,6 +231,16 @@ var TextManager = new Class({
 
         this.position = new Vector3(0, 0, 0);
 
+        this.currentGlyph = -1;
+        this.glyphData = [];
+        for (var i=0; i<this.textMesh.glyphs.length; i++) {
+            this.glyphData[i] = {
+                mouseOver: false,
+                tween: 0.0,
+                resetting: false,
+            };
+        }
+
         //no floor
         // world.floor = height;
 
@@ -228,8 +248,21 @@ var TextManager = new Class({
         this.textMesh.destroy();
 
         this.style = 0;
+        this._finishTweenReset = this.finishTweenReset.bind(this);
+        this._startTweenReset = this.startTweenReset.bind(this);
 
         this._createRandomForces();
+    },
+
+    finishTweenReset: function(index) {
+        this.glyphData[index].resetting = false;
+        this.glyphData[index].tweening = false;
+        this.glyphData[index].tween = 0;
+    },
+
+    startTweenReset: function(index) {
+        this.glyphData[index].resetting = true;
+        this._saveGlyph(index);
     },
 
 
@@ -239,39 +272,41 @@ var TextManager = new Class({
 
         world.step(dt);
 
-        if (this.resetting) {
-            var a = this.resetTime / resetDuration;
-            a = easeOutExpo(this.resetTime, 0, 1, resetDuration);
+        // if (this.resetting) {
+        //     var a = this.resetTime / resetDuration;
+        //     a = easeOutExpo(this.resetTime, 0, 1, resetDuration);
             
-            // if (a > this.snap) {//snap to edge
-            //     a = 1;
-            // }
+        //     // if (a > this.snap) {//snap to edge
+        //     //     a = 1;
+        //     // }
 
-            this.resetTime += 0.1;
-            if (this.resetTime > resetDuration) {
-                this.resetting = false;
-                this.resetTime = 0;
+        //     this.resetTime += 0.1;
+        //     if (this.resetTime > resetDuration) {
+        //         this.resetting = false;
+        //         this.resetTime = 0;
 
-                var a = 1;
-                for (var i=0; i<world.particles.length; i++) {
-                    var p = world.particles[i];
+        //         var a = 1;
+        //         for (var i=0; i<world.particles.length; i++) {
+        //             var p = world.particles[i];
 
-                    p.position.copy(p.lastPosition).lerp(p.original, a);
-                    p.velocity.lerp(zero, a);
-                    p.acceleration.lerp(zero, a);
-                }
+        //             p.position.copy(p.lastPosition).lerp(p.original, a);
+        //             p.velocity.lerp(zero, a);
+        //             p.acceleration.lerp(zero, a);
+        //         }
 
-            } else {
-                for (var i=0; i<world.particles.length; i++) {
-                    var p = world.particles[i];
+        //     } else {
+        //         for (var i=0; i<world.particles.length; i++) {
+        //             var p = world.particles[i];
 
-                    p.position.copy(p.lastPosition).lerp(p.original, a);
-                    p.velocity.lerp(zero, a);
-                    p.acceleration.lerp(zero, a);
-                }
-            }
-        } 
+        //             p.position.copy(p.lastPosition).lerp(p.original, a);
+        //             p.velocity.lerp(zero, a);
+        //             p.acceleration.lerp(zero, a);
+        //         }
+        //     }
+        // } 
 
+        this._resolveTweens();
+        this._updateKillTweens();
 
         if (this.style === 0)
             this._updateMouseInteractions();
@@ -279,6 +314,23 @@ var TextManager = new Class({
             this._updateMouseInteractions2();
         else if (this.style === 2)
             this._updateMouseInteractions3();
+    },
+
+    _resolveTweens: function() {
+        var world = this.world;
+        for (var i=0; i<world.particles.length; i++) {
+            var p = world.particles[i];
+            var glyphIndex = p.glyphIndex;
+
+            var gd = this.glyphData[glyphIndex];
+
+            if (gd.resetting) {
+                var a = gd.tween;
+                p.position.copy(p.lastPosition).lerp(p.original, a);
+                p.velocity.lerp(zero, a);
+                p.acceleration.lerp(zero, a);
+            }
+        }
     },
 
     _createRandomForces: function() {
@@ -304,6 +356,79 @@ var TextManager = new Class({
         }
     },
 
+    _updateKillTweens: function() {
+        var mouse = this.mouse;
+
+        for (var i=0; i<this.textMesh.glyphs.length; i++) {
+            var gData = this.glyphData[i];
+
+            var g = this.textMesh.glyphs[i];
+            var b = g.bounds;
+
+            var withinGlyph = mouse.x > b.minX && mouse.x < b.maxX && mouse.y > b.minY && mouse.y < b.maxY
+            
+
+            var dist = mouse.distance(tmp.set( b.minX+ (b.maxX-b.minX)/2, b.minY + (b.maxY-b.minY)/2 ));
+
+            if (dist < 50) {
+                if (gData.tweening)
+                    TweenLite.killTweensOf( gData );
+                gData.mouseOver = true;
+                gData.tweening = false;
+                gData.resetting = false;
+
+                //The mouse is under this !
+            } else if (gData.mouseOver) {
+                gData.mouseOver = false;
+                // gData.tweening = true;
+                // // gData.resetting = true;
+                
+                // TweenLite.to( gData, 0.5, {
+                //     overwrite: 1,
+                //     tween: 1.0,
+                //     delay: 0.5,
+                //     onStart: this._startTweenReset,
+                //     onStartParams: [ i ],
+                //     onComplete: this._finishTweenReset,
+                //     onCompleteParams: [ i ]
+                // });
+            }
+        }
+    },
+
+    _updateGlyphHitTest: function() {
+
+        // this.currentGlyph = this.getGlyphUnderMouse();
+                
+        
+
+        //Any remaining glyphs that aren't tweening, and aren't under mouse, just tween them 
+        //after a short delay
+        for (var i=0; i<this.textMesh.glyphs.length; i++) {
+            var gData = this.glyphData[i];
+            if (!gData.mouseOver && !gData.tweening) {
+                gData.tweening = true;
+                gData.resetting = false;
+
+                TweenLite.to( gData, 0.5, {
+                    overwrite: 1,
+                    tween: 1.0,
+                    delay: 1.5 + (i*.01),
+                    onStart: this._startTweenReset,
+                    onStartParams: [ i ],
+                    onComplete: this._finishTweenReset,
+                    onCompleteParams: [ i ]
+                });
+            }
+        }
+
+        this._updateKillTweens();
+
+        // if (oldGlyph !== this.currentGlyph && oldGlyph !== -1) {
+        //     console.log("LEAVE", oldGlyph)
+        // }
+    },
+
     _updateMouseInteractions: function() {
         var mouse = this.mouse,
             lastMouse = this.lastMouse,
@@ -311,54 +436,107 @@ var TextManager = new Class({
             width = this.camera.viewportWidth,
             height = this.camera.viewportHeight;
 
+
+        var mousePush = 5;
+        var mousePushThreshold = 15;
+
+        var explodeThreshold = 50;
+        var strength = 3;
+        tmp3.copy( mouse );
+        tmp3.sub( lastMouse );
+        tmp3.normalize();
+        tmp3.scale(mousePush);
+
+        var mouseMoved = mouse.distance(lastMouse) > 5;
+
         var explode = true;
         for (var i=0; i<world.particles.length; i++) {
             var p = world.particles[i];
 
-            force.random();
-            // force.z = 0;
-
-            //normalized position
-            tmp.copy( p.position );
-            tmp.x /= width;
-            tmp.y /= height;
-
-            tmp2.copy( mouse );
-            tmp2.x /= width;
-            tmp2.y /= height;
-
-
-            var dist = tmp.distance(tmp2);
-
-            // var power = (1-dist) * 10;
-            
-
-            //scale force by distance from mouse..
-            // tmp.scale( mouse.distance(p.position) );
-
-            if (explode) {
-                dist = smoothstep(0.0, 0.10, dist);
-
-                var strength = explode ? 1 : 5;
-                var power = lerp(strength, 0.0, dist);
-                force.scale( power );
-
-                force.z = 0;
-
-                p.velocity.add(force);
-            } else {
                 
-                // for (var j=0; j<p.constraints.length; j++) {
-                //     var c = p.constraints[j];
+            var pDist = p.position.distance(mouse);
+            if ( pDist < mousePushThreshold) {
+                if (mouseMoved) {
+                    p.velocity.add(tmp3);
+                }
+            }
 
+            if (pDist < explodeThreshold) {
+                force.random();
+                // force.z = 0;
 
+                
 
-                //     // c.stiffness = 0.1;
-                //     // c.restingDistance = c.originalRestingDistance * dist;
-                //     // c.restingDistance = Math.max(5, p.constraints[j].restingDistance);
-                // }
+                var dist = this._normalizedDistanceFromMouse(p);
+                if (dist < 0.5) {
+                    var power = lerp(strength, 0.0, dist);
+                    force.scale( power );
+
+                    force.z = 0;
+
+                    p.velocity.add(force);
+                }
+                
+                    
+            } else {
+                // var a = 0.1;
+                // p.position.lerp(p.original, a);
+                // p.velocity.lerp(zero, a);
+                // p.acceleration.lerp(zero, a);
             }
         }
+
+        lastMouse.copy(mouse);
+    },
+
+    _normalizedDistanceFromMouse: function(p) {
+        var distThreshold = 0.1;
+        var width = this.camera.viewportWidth,
+            height = this.camera.viewportHeight
+
+        //normalized position
+        tmp.copy( p.position );
+        tmp.x /= width;
+        tmp.y /= height;
+
+        tmp2.copy( this.mouse );
+        tmp2.x /= width;
+        tmp2.y /= height;
+
+        var dist = tmp.distance(tmp2);
+        dist = smoothstep(0.0, distThreshold, dist);
+        return dist;
+    },
+
+    _updateMouseInteractions2: function() {
+        var mouse = this.mouse,
+            lastMouse = this.lastMouse,
+            world = this.world;
+
+        tmp.copy( mouse );
+        tmp.sub( lastMouse );
+        tmp.normalize();
+            
+        // tmp2.random();
+        // tmp2.scale(10);
+        // tmp2.z = 0;
+        // tmp.add( tmp2 );
+
+        tmp.scale(5);
+
+        if ( mouse.distance(lastMouse) > 5 ) {
+            for (var i=0; i<world.particles.length; i++) {
+                var p = world.particles[i];
+
+                if (p.position.distance(mouse) < 50) {
+                    p.velocity.add(tmp);
+                }
+
+                   
+            }
+        }
+
+        lastMouse.copy(mouse);
     },
 
     _updateMouseInteractions3: function() {
@@ -395,37 +573,6 @@ var TextManager = new Class({
         }
     },
 
-    _updateMouseInteractions2: function() {
-        var mouse = this.mouse,
-            lastMouse = this.lastMouse,
-            world = this.world;
-
-        tmp.copy( mouse );
-        tmp.sub( lastMouse );
-        tmp.normalize();
-            
-        // tmp2.random();
-        // tmp2.scale(10);
-        // tmp2.z = 0;
-        // tmp.add( tmp2 );
-
-        tmp.scale(5);
-
-        if ( mouse.distance(lastMouse) > 5 ) {
-            for (var i=0; i<world.particles.length; i++) {
-                var p = world.particles[i];
-
-                if (p.position.distance(mouse) < 50) {
-                    p.velocity.add(tmp);
-                }
-
-                   
-            }
-        }
-
-        lastMouse.copy(mouse);
-    },
-
     _savePosition: function() {
         var world = this.world;
 
@@ -435,15 +582,20 @@ var TextManager = new Class({
         }   
     },
 
-    initWebGL: function(canvas) {
-        try {
-            this.webGLRenderer = new WebGLRenderer(canvas, vert, frag);
-            this.webGLRenderer.setup(this.world.particles);
-        } catch (e) {
-            console.warn("Could not set up TextFX WebGL renderer", e);
-            this.webGLRenderer = null;
-        }
+    _saveGlyph: function(glyphIndex) {
+        var world = this.world;
 
+        for (var i=0; i<world.particles.length; i++) {
+            var p = world.particles[i];
+            if (p.glyphIndex === glyphIndex)
+                p.lastPosition.copy(p.position);
+        }   
+    },
+
+    initWebGL: function(canvas, antialiasing) {        
+        this.webGLRenderer = new WebGLRenderer(canvas, vert, frag, antialiasing, fxaa);
+        this.webGLRenderer.setup(this.world.particles);
+        
         this.resize(canvas.width, canvas.height);
     },
 
@@ -451,6 +603,9 @@ var TextManager = new Class({
     resize: function(width, height) {
         var yDown = !!this.webGLRenderer;
 
+        if (this.webGLRenderer) {
+            this.webGLRenderer.resize(width, height);
+        }
 
         var zoom = 1/this.scale;
         this.camera.zoom = zoom;
@@ -478,6 +633,7 @@ var TextManager = new Class({
         this.camera.unproject(tmp, tmp2);
         this.mouse.set(tmp2.x, tmp2.y);
 
+        this._updateGlyphHitTest();
     },
 
     onTouchStart: function(x, y) {
@@ -503,6 +659,12 @@ var TextManager = new Class({
         fill = typeof fill === "boolean" ? fill : true;
         noIntersect = typeof noIntersect === "boolean" ? noIntersect : false;
 
+        var style = "rgba("+ ~~(this.color.r*255)+","+ ~~(this.color.g*255) +","+ ~~(this.color.b*255) + "," + this.color.a +")";
+        if (fill)
+            context.fillStyle = style;
+        else
+            context.strokeStyle = style;
+
         drawTriangles(context, this.world.particles, this.camera, fill, noIntersect);
     },
 
@@ -517,7 +679,8 @@ var TextManager = new Class({
 
     renderWebGL: function(points) {
         if (this.webGLRenderer) {
-            this.webGLRenderer.render(this.world.particles, this.camera, this.color, points);
+            this.webGLRenderer.render(this.width, this.height, 
+                        this.world.particles, this.camera, this.color, points);
         }
     },
 });
@@ -531,7 +694,7 @@ module.exports = TextManager;
 // renderer.draw();
 
 
-},{"../vendor/uni_sans_bold_B.typeface":6,"./Constraint":1,"./WebGLRenderer":3,"./World":4,"./typeface-stripped":5,"cam3d":17,"fs":64,"interpolation":19,"klasse":43,"text3d":"Bm9NR4","vecmath":63}],3:[function(require,module,exports){
+},{"../vendor/uni_sans_bold_B.typeface":6,"./Constraint":1,"./WebGLRenderer":3,"./World":4,"./typeface-stripped":5,"cam3d":17,"fs":65,"interpolation":19,"klasse":44,"text3d":"Bm9NR4","vecmath":64}],3:[function(require,module,exports){
 
 var Class = require('klasse');
 var WebGLContext = require('kami').WebGLContext;
@@ -539,6 +702,9 @@ var WebGLContext = require('kami').WebGLContext;
 var MeshRenderer = require('kami-mesh').MeshRenderer;
 
 var ShaderProgram = require('kami').ShaderProgram;
+var SpriteBatch = require('kami').SpriteBatch;
+var FrameBuffer = require('kami').FrameBuffer;
+var Texture = require('kami').Texture;
 
 var Matrix4 = require('vecmath').Matrix4;
 var OrthographicCamera = require('cam3d').OrthographicCamera;
@@ -552,17 +718,36 @@ var tmpVec = new Vector3();
 var tmpVec2 = new Vector3();
 var tmpVec3 = new Vector3();
 
+var AA_SIZE = 2048;
+
 var WebGLRenderer = new Class({
 
-    initialize: function(canvas, vert, frag) {
-        this.canvas = canvas;
+    initialize: function(canvas, vert, frag, useAA) {
         this.context = new WebGLContext(canvas.width, canvas.height, canvas);
 
         this.mesh = null;
 
+        this.useAA = useAA;
+
         this.shader = new ShaderProgram(this.context, vert, frag);
         if (this.shader.log)
             console.warn(this.shader.log);
+
+
+        if (this.useAA) {
+            // SpriteBatch.DEFAULT_FRAG_SHADER = fxaaFrag;
+            this.batch = new SpriteBatch(this.context);
+            // this.batch.shader.bind();
+            // this.batch.shader.setUniformf("texcoordOffset", 1.0/AA_SIZE, 1.0/AA_SIZE);
+
+            this.aaBuffer = new FrameBuffer(this.context, AA_SIZE, AA_SIZE);
+            this.aaBuffer.texture.setFilter(Texture.Filter.LINEAR);
+        }
+    },
+
+    resize: function(width, height) {
+        this.context.width = width;
+        this.context.height = height;        
     },
 
     setup: function(particles) {
@@ -577,17 +762,21 @@ var WebGLRenderer = new Class({
         });
     },
 
-    render: function(particles, camera, color, points) {
+    destroy: function() {
+        if (this.aaBuffer) 
+            this.aaBuffer.destroy();
+        if (this.batch)
+            this.batch.destroy();
+        this.shader.destroy();
+        if (this.mesh)
+            this.mesh.destroy();
+    },
+
+    _renderNormal: function(particles, camera, color, points) {
         var gl = this.context.gl;
         var renderer = this.mesh;
         var shader = this.shader;
 
-        gl.disable(gl.DEPTH_TEST);
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-        gl.colorMask(true, true, true, true);
-        gl.disable(gl.CULL_FACE);
-        
         renderer.shader = shader;
         renderer.begin(camera.combined, points ? gl.POINTS : gl.TRIANGLES);
         
@@ -606,11 +795,69 @@ var WebGLRenderer = new Class({
 
         renderer.end();
     },
+
+    render: function(width, height, particles, camera, color, points) {
+        var useAA = this.useAA;
+        var gl = this.context.gl;
+
+        width *= 1/camera.zoom;
+        height *= 1/camera.zoom;
+
+        if (camera.viewportWidth > AA_SIZE || camera.viewportHeight > AA_SIZE ||
+            width > AA_SIZE/2 || height > AA_SIZE/2) {
+            useAA = false;
+        }
+
+        //ensure our states are set nicely
+        gl.blendEquation(gl.FUNC_ADD);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.disable(gl.DEPTH_TEST);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        gl.colorMask(true, true, true, true);
+        gl.depthMask(false);
+        gl.disable(gl.CULL_FACE);
+
+        if (useAA) {
+            var fbo = this.aaBuffer;
+            var fboCam = this.fboCamera;
+
+            var w = camera.viewportWidth,
+                h = camera.viewportHeight;
+                
+            camera.viewportWidth = fbo.width/2;
+            camera.viewportHeight = -fbo.height/2;
+            camera.update();
+
+            fbo.begin();
+
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            this._renderNormal(particles, camera, color, points);
+            fbo.end();
+
+            var out = AA_SIZE/2;
+
+            this.batch.resize(w, h);
+            this.batch.begin();
+            this.batch.draw(fbo.texture, (w-out)/2, (h-out)/2, out, out);
+            this.batch.end();
+            
+            camera.viewportWidth = w;
+            camera.viewportHeight = h;
+            camera.update();
+        } else {
+            this._renderNormal(particles, camera, color, points);
+        }
+        
+        gl.depthMask(true);
+        gl.enable(gl.DEPTH_TEST);
+    },
 });
 
 
 module.exports = WebGLRenderer;
-},{"cam3d":17,"kami":40,"kami-mesh":20,"klasse":43,"vecmath":63}],4:[function(require,module,exports){
+},{"cam3d":17,"kami":40,"kami-mesh":20,"klasse":44,"vecmath":64}],4:[function(require,module,exports){
 var Class = require('klasse');
 
 var Vector3 = require('vecmath').Vector3;
@@ -644,7 +891,7 @@ var World = new Class({
         this.particles.length = 0;
     },
 
-    addTriangleList: function(triangles, mass, restitution) {
+    addTriangleList: function(triangles, mass, restitution, glyphIndex) {
         mass = typeof mass === "number" ? mass : 1.0;
         restitution = typeof restitution === "number" ? restitution : -0.5;
 
@@ -667,6 +914,7 @@ var World = new Class({
                 lastPosition: new Vector3(point),
                 finalPosition: new Vector3(point),
 
+                glyphIndex: glyphIndex,
                 mass: mass,
                 restitution: restitution,
                 restingDistance: 0,
@@ -726,7 +974,7 @@ var World = new Class({
         for (var k=0; k<text3D.glyphs.length; k++) {
             var g = text3D.glyphs[k];
 
-            this.addTriangleList(g.points, mass, restitution);
+            this.addTriangleList(g.points, mass, restitution, k);
         }
     },
 
@@ -791,7 +1039,7 @@ var World = new Class({
 });
 
 module.exports = World;
-},{"./Constraint":1,"klasse":43,"vecmath":63}],5:[function(require,module,exports){
+},{"./Constraint":1,"klasse":44,"vecmath":64}],5:[function(require,module,exports){
 var _typeface_js = {
 
     faces: {},
@@ -1031,7 +1279,7 @@ Glyph.DEFAULT_CHARACTER = '?';
 Glyph.SAVE_CONTOUR = false;
 
 module.exports = Glyph;
-},{"./triangulate":11,"./util":13,"klasse":43,"vecmath":63}],8:[function(require,module,exports){
+},{"./triangulate":11,"./util":13,"klasse":44,"vecmath":64}],8:[function(require,module,exports){
 var Class = require('klasse');
 
 var Vector2 = require('vecmath').Vector2;
@@ -1217,7 +1465,7 @@ Text3D.ALIGN = {
 };
 
 module.exports = Text3D;
-},{"./Glyph":7,"./triangulate":11,"./util":13,"klasse":43,"vecmath":63}],"Bm9NR4":[function(require,module,exports){
+},{"./Glyph":7,"./triangulate":11,"./util":13,"klasse":44,"vecmath":64}],"Bm9NR4":[function(require,module,exports){
 module.exports = {
     triangulate: require('./triangulate'),
     util: require('./util'),
@@ -1395,7 +1643,7 @@ module.exports = function (shapes) {
     }
     return allTris;
 }
-},{"poly2tri":48}],12:[function(require,module,exports){
+},{"poly2tri":49}],12:[function(require,module,exports){
 module.exports=require(5)
 },{}],13:[function(require,module,exports){
 var Vector2 = require('vecmath').Vector2;
@@ -1578,7 +1826,7 @@ function getShapeList(face, size, chr, steps) {
 
 
 module.exports.getShapeList = getShapeList;
-},{"./typeface-stripped.js":12,"shape2d":54,"vecmath":63}],14:[function(require,module,exports){
+},{"./typeface-stripped.js":12,"shape2d":55,"vecmath":64}],14:[function(require,module,exports){
 var Class = require('klasse');
 
 var util = require('./vecutil');
@@ -1746,7 +1994,7 @@ module.exports = Camera;
 
 
 
-},{"./vecutil":18,"klasse":43,"vecmath":63}],15:[function(require,module,exports){
+},{"./vecutil":18,"klasse":44,"vecmath":64}],15:[function(require,module,exports){
 var Class = require('klasse');
 
 var Vector3 = require('vecmath').Vector3;
@@ -1813,7 +2061,7 @@ var OrthographicCamera = new Class({
 });
 
 module.exports = OrthographicCamera;
-},{"./Camera":14,"klasse":43,"vecmath":63}],16:[function(require,module,exports){
+},{"./Camera":14,"klasse":44,"vecmath":64}],16:[function(require,module,exports){
 var Class = require('klasse');
 
 var Matrix4 = require('vecmath').Matrix4;
@@ -1976,7 +2224,7 @@ var PerspectiveCamera = new Class({
 });
 
 module.exports = PerspectiveCamera;
-},{"./Camera":14,"klasse":43,"vecmath":63}],17:[function(require,module,exports){
+},{"./Camera":14,"klasse":44,"vecmath":64}],17:[function(require,module,exports){
 module.exports = {
 	vecutil: require('./vecutil'),
 	Camera: require('./Camera'),
@@ -2018,7 +2266,7 @@ util.rotate = function(vec, axis, radians) {
 };
 
 module.exports = util;
-},{"vecmath":63}],19:[function(require,module,exports){
+},{"vecmath":64}],19:[function(require,module,exports){
 /** Utility function for linear interpolation. */
 module.exports.lerp = function(v0, v1, t) {
     return v0*(1-t)+v1*t;
@@ -5262,7 +5510,7 @@ var BaseBatch = new Class({
 
 module.exports = BaseBatch;
 
-},{"./glutils/Mesh":38,"klasse":43,"number-util":41}],33:[function(require,module,exports){
+},{"./glutils/Mesh":38,"klasse":41,"number-util":42}],33:[function(require,module,exports){
 /**
  * @module kami
  */
@@ -5717,7 +5965,7 @@ SpriteBatch.DEFAULT_VERT_SHADER = [
 
 module.exports = SpriteBatch;
 
-},{"./BaseBatch":32,"./glutils/Mesh":38,"./glutils/ShaderProgram":39,"klasse":43}],34:[function(require,module,exports){
+},{"./BaseBatch":32,"./glutils/Mesh":38,"./glutils/ShaderProgram":39,"klasse":41}],34:[function(require,module,exports){
 /**
  * @module kami
  */
@@ -6327,7 +6575,7 @@ Texture.getNumComponents = function(format) {
 };
 
 module.exports = Texture;
-},{"klasse":43,"number-util":41,"signals":42}],35:[function(require,module,exports){
+},{"klasse":41,"number-util":42,"signals":43}],35:[function(require,module,exports){
 var Class = require('klasse');
 var Texture = require('./Texture');
 
@@ -6412,7 +6660,7 @@ var TextureRegion = new Class({
 });
 
 module.exports = TextureRegion;
-},{"./Texture":34,"klasse":43}],36:[function(require,module,exports){
+},{"./Texture":34,"klasse":41}],36:[function(require,module,exports){
 /**
  * @module kami
  */
@@ -6426,6 +6674,12 @@ var Signal = require('signals');
  * shaders and buffers). This also handles general viewport management.
  *
  * If the view is not specified, a canvas will be created.
+ *
+ * If the `view` parameter is an instanceof WebGLRenderingContext,
+ * we will use its canvas and context without fetching another through `getContext`.
+ * Passing a canvas that has already had `getContext('webgl')` called will not cause
+ * errors, but in certain debuggers (e.g. Chrome WebGL Inspector) only the latest
+ * context will be traced.
  * 
  * @class  WebGLContext
  * @constructor
@@ -6458,6 +6712,14 @@ var WebGLContext = new Class({
 		 * @type {WebGLRenderingContext}
 		 */
 		this.gl = null;
+
+		if (view && typeof window.WebGLRenderingContext !== "undefined"
+				 && view instanceof window.WebGLRenderingContext) {
+			view = view.canvas;
+			this.gl = view;
+			this.valid = true;
+			contextAttributes = undefined; //just ignore new attribs...
+		}
 
 		/**
 		 * The canvas DOM element for this context.
@@ -6535,7 +6797,8 @@ var WebGLContext = new Class({
 			this._contextRestored(ev);
 		}.bind(this));
 			
-		this._initContext();
+		if (!this.valid) //would only be valid if WebGLRenderingContext was passed 
+			this._initContext();
 
 		this.resize(this.width, this.height);
 	},
@@ -6652,7 +6915,7 @@ var WebGLContext = new Class({
 });
 
 module.exports = WebGLContext;
-},{"klasse":43,"signals":42}],37:[function(require,module,exports){
+},{"klasse":41,"signals":43}],37:[function(require,module,exports){
 var Class = require('klasse');
 var Texture = require('../Texture');
 
@@ -6823,7 +7086,7 @@ var FrameBuffer = new Class({
 });
 
 module.exports = FrameBuffer;
-},{"../Texture":34,"klasse":43}],38:[function(require,module,exports){
+},{"../Texture":34,"klasse":41}],38:[function(require,module,exports){
 /**
  * @module kami
  */
@@ -7096,7 +7359,7 @@ Mesh.Attrib = new Class({
 
 
 module.exports = Mesh;
-},{"klasse":43}],39:[function(require,module,exports){
+},{"klasse":41}],39:[function(require,module,exports){
 /**
  * @module kami
  */
@@ -7594,7 +7857,7 @@ ShaderProgram.COLOR_ATTRIBUTE = "Color";
 ShaderProgram.TEXCOORD_ATTRIBUTE = "TexCoord";
 
 module.exports = ShaderProgram;
-},{"klasse":43}],40:[function(require,module,exports){
+},{"klasse":41}],40:[function(require,module,exports){
 /**
   Auto-generated Kami index file.
   Created on 2014-03-02.
@@ -7611,8 +7874,106 @@ module.exports = {
     'ShaderProgram':   require('./glutils/ShaderProgram.js')
 };
 },{"./BaseBatch.js":32,"./SpriteBatch.js":33,"./Texture.js":34,"./TextureRegion.js":35,"./WebGLContext.js":36,"./glutils/FrameBuffer.js":37,"./glutils/Mesh.js":38,"./glutils/ShaderProgram.js":39}],41:[function(require,module,exports){
-module.exports=require(23)
+module.exports=require(22)
 },{}],42:[function(require,module,exports){
+var int8 = new Int8Array(4);
+var int32 = new Int32Array(int8.buffer, 0, 1);
+var float32 = new Float32Array(int8.buffer, 0, 1);
+
+/**
+ * A singleton for number utilities. 
+ * @class NumberUtil
+ */
+var NumberUtil = function() {
+
+};
+
+
+/**
+ * Returns a float representation of the given int bits. ArrayBuffer
+ * is used for the conversion.
+ *
+ * @method  intBitsToFloat
+ * @static
+ * @param  {Number} i the int to cast
+ * @return {Number}   the float
+ */
+NumberUtil.intBitsToFloat = function(i) {
+	int32[0] = i;
+	return float32[0];
+};
+
+/**
+ * Returns the int bits from the given float. ArrayBuffer is used
+ * for the conversion.
+ *
+ * @method  floatToIntBits
+ * @static
+ * @param  {Number} f the float to cast
+ * @return {Number}   the int bits
+ */
+NumberUtil.floatToIntBits = function(f) {
+	float32[0] = f;
+	return int32[0];
+};
+
+/**
+ * Encodes ABGR int as a float, with slight precision loss.
+ *
+ * @method  intToFloatColor
+ * @static
+ * @param {Number} value an ABGR packed integer
+ */
+NumberUtil.intToFloatColor = function(value) {
+	return NumberUtil.intBitsToFloat( value & 0xfeffffff );
+};
+
+/**
+ * Returns a float encoded ABGR value from the given RGBA
+ * bytes (0 - 255). Useful for saving bandwidth in vertex data.
+ *
+ * @method  colorToFloat
+ * @static
+ * @param {Number} r the Red byte (0 - 255)
+ * @param {Number} g the Green byte (0 - 255)
+ * @param {Number} b the Blue byte (0 - 255)
+ * @param {Number} a the Alpha byte (0 - 255)
+ * @return {Float32}  a Float32 of the RGBA color
+ */
+NumberUtil.colorToFloat = function(r, g, b, a) {
+	var bits = (a << 24 | b << 16 | g << 8 | r);
+	return NumberUtil.intToFloatColor(bits);
+};
+
+/**
+ * Returns true if the number is a power-of-two.
+ *
+ * @method  isPowerOfTwo
+ * @param  {Number}  n the number to test
+ * @return {Boolean}   true if power-of-two
+ */
+NumberUtil.isPowerOfTwo = function(n) {
+	return (n & (n - 1)) == 0;
+};
+
+/**
+ * Returns the next highest power-of-two from the specified number. 
+ * 
+ * @param  {Number} n the number to test
+ * @return {Number}   the next highest power of two
+ */
+NumberUtil.nextPowerOfTwo = function(n) {
+	n--;
+	n |= n >> 1;
+	n |= n >> 2;
+	n |= n >> 4;
+	n |= n >> 8;
+	n |= n >> 16;
+	return n+1;
+};
+
+module.exports = NumberUtil;
+},{}],43:[function(require,module,exports){
 /*jslint onevar:true, undef:true, newcap:true, regexp:true, bitwise:true, maxerr:50, indent:4, white:false, nomen:false, plusplus:false */
 /*global define:false, require:false, exports:false, module:false, signals:false */
 
@@ -8059,11 +8420,11 @@ module.exports=require(23)
 
 }(this));
 
-},{}],43:[function(require,module,exports){
-module.exports=require(22)
 },{}],44:[function(require,module,exports){
-module.exports={"version": "1.3.3"}
+module.exports=require(22)
 },{}],45:[function(require,module,exports){
+module.exports={"version": "1.3.3"}
+},{}],46:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -8210,7 +8571,7 @@ module.exports = AdvancingFront;
 module.exports.Node = Node;
 
 
-},{}],46:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -8447,7 +8808,7 @@ Point.dot = function(a, b) {
 
 module.exports = Point;
 
-},{"./xy":53}],47:[function(require,module,exports){
+},{"./xy":54}],48:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -8487,7 +8848,7 @@ PointError.prototype.constructor = PointError;
 
 module.exports = PointError;
 
-},{"./xy":53}],48:[function(require,module,exports){
+},{"./xy":54}],49:[function(require,module,exports){
 var global=typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {};/*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -8554,7 +8915,7 @@ var sweep = require('./sweep');
 exports.triangulate = sweep.triangulate;
 exports.sweep = {Triangulate: sweep.triangulate};
 
-},{"../dist/version.json":44,"./point":46,"./pointerror":47,"./sweep":49,"./sweepcontext":50,"./triangle":51}],49:[function(require,module,exports){
+},{"../dist/version.json":45,"./point":47,"./pointerror":48,"./sweep":50,"./sweepcontext":51,"./triangle":52}],50:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -9407,7 +9768,7 @@ function flipScanEdgeEvent(tcx, ep, eq, flip_triangle, t, p) {
 
 exports.triangulate = triangulate;
 
-},{"./advancingfront":45,"./pointerror":47,"./triangle":51,"./utils":52}],50:[function(require,module,exports){
+},{"./advancingfront":46,"./pointerror":48,"./triangle":52,"./utils":53}],51:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -9767,7 +10128,7 @@ SweepContext.prototype.meshClean = function(triangle) {
 
 module.exports = SweepContext;
 
-},{"./advancingfront":45,"./point":46,"./pointerror":47,"./sweep":49,"./triangle":51}],51:[function(require,module,exports){
+},{"./advancingfront":46,"./point":47,"./pointerror":48,"./sweep":50,"./triangle":52}],52:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -10206,7 +10567,7 @@ Triangle.prototype.markConstrainedEdgeByPoints = function(p, q) {
 
 module.exports = Triangle;
 
-},{"./xy":53}],52:[function(require,module,exports){
+},{"./xy":54}],53:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -10289,7 +10650,7 @@ module.exports = {
     inScanArea: inScanArea
 };
 
-},{}],53:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -10356,7 +10717,7 @@ module.exports = {
     equals: equals
 };
 
-},{}],54:[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 var Vector2 = require('vecmath').Vector2;
 var Class = require('klasse');
 var lerp = require('interpolation').lerp;
@@ -10608,25 +10969,25 @@ var Shape = new Class({
 });
 
 module.exports = Shape;
-},{"interpolation":55,"klasse":43,"vecmath":63}],55:[function(require,module,exports){
+},{"interpolation":56,"klasse":44,"vecmath":64}],56:[function(require,module,exports){
 module.exports=require(19)
-},{}],56:[function(require,module,exports){
-module.exports=require(24)
 },{}],57:[function(require,module,exports){
-module.exports=require(25)
+module.exports=require(24)
 },{}],58:[function(require,module,exports){
+module.exports=require(25)
+},{}],59:[function(require,module,exports){
 module.exports=require(26)
-},{"./Matrix3":56,"./Vector3":60,"./common":62}],59:[function(require,module,exports){
+},{"./Matrix3":57,"./Vector3":61,"./common":63}],60:[function(require,module,exports){
 module.exports=require(27)
-},{}],60:[function(require,module,exports){
-module.exports=require(28)
 },{}],61:[function(require,module,exports){
+module.exports=require(28)
+},{}],62:[function(require,module,exports){
 module.exports=require(29)
-},{"./common":62}],62:[function(require,module,exports){
+},{"./common":63}],63:[function(require,module,exports){
 module.exports=require(30)
-},{}],63:[function(require,module,exports){
+},{}],64:[function(require,module,exports){
 arguments[4][31][0].apply(exports,arguments)
-},{"./Matrix3":56,"./Matrix4":57,"./Quaternion":58,"./Vector2":59,"./Vector3":60,"./Vector4":61}],64:[function(require,module,exports){
+},{"./Matrix3":57,"./Matrix4":58,"./Quaternion":59,"./Vector2":60,"./Vector3":61,"./Vector4":62}],65:[function(require,module,exports){
 
 // not implemented
 // The reason for having an empty file and not throwing is to allow

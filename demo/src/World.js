@@ -31,7 +31,7 @@ var World = new Class({
         this.particles.length = 0;
     },
 
-    addTriangleList: function(triangles, mass, restitution) {
+    addTriangleList: function(triangles, mass, restitution, glyphIndex) {
         mass = typeof mass === "number" ? mass : 1.0;
         restitution = typeof restitution === "number" ? restitution : -0.5;
 
@@ -54,6 +54,7 @@ var World = new Class({
                 lastPosition: new Vector3(point),
                 finalPosition: new Vector3(point),
 
+                glyphIndex: glyphIndex,
                 mass: mass,
                 restitution: restitution,
                 restingDistance: 0,
@@ -113,7 +114,7 @@ var World = new Class({
         for (var k=0; k<text3D.glyphs.length; k++) {
             var g = text3D.glyphs[k];
 
-            this.addTriangleList(g.points, mass, restitution);
+            this.addTriangleList(g.points, mass, restitution, k);
         }
     },
 

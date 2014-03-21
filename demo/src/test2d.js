@@ -30,6 +30,8 @@ domready(function() {
     document.body.appendChild(canvas);
 
     var webgl = false;
+    var useAA = false;
+
     var context;
 
     if (webgl) {
@@ -42,12 +44,16 @@ domready(function() {
     
 
 
-    var textManager = new TextManager("STORYTELLING.\nCRAFT. TECHNOLOGY.");
+    var textManager = new TextManager("STORYTELLING.\nCRAFT. TECHNOLOGY.", {
+        fontSize: 50,
+        // simplify: 50,
+        // steps: 30,
+    }, TweenLite);
     textManager.resize(width, height);
     if (webgl)
-        textManager.initWebGL(canvas);
+        textManager.initWebGL(context.gl, useAA);
 
-    textManager.style = 1;
+    textManager.style = 0;
 
     function resize(ev) {
         var TARGET_WIDTH = 1024;
@@ -115,12 +121,12 @@ domready(function() {
 
         textManager.update(0.1);
 
-
+        // textManager.color.r = 1;
             
         
         if (webgl) {
             var gl = context.gl;
-            gl.clearColor(0,0.5,0,1);
+            gl.clearColor(1,1,1,1);
             gl.clear(gl.COLOR_BUFFER_BIT);
 
             textManager.renderWebGL();
