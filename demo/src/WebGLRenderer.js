@@ -54,12 +54,13 @@ var WebGLRenderer = new Class({
     },
 
     setup: function(particles) {
-        if (this.mesh)
-            this.mesh.destroy();
+        //TODO: fix!!
+        // if (this.mesh)
+        //     this.mesh.destroy();
 
         this.mesh = new MeshRenderer(this.context, {
             hasColors: true,
-            maxVertices: particles.length * 4, //4 floats per vertex
+            maxVertices: particles.length * 2 * 4, //4 floats per vertex
             hasNormals: false,
             numTexCoords: 0
         });
@@ -75,31 +76,67 @@ var WebGLRenderer = new Class({
             this.mesh.destroy();
     },
 
-    _renderNormal: function(particles, camera, color, points) {
+    _renderNormal: function(particles, camera, color, lines) {
         var gl = this.context.gl;
         var renderer = this.mesh;
         var shader = this.shader;
 
         renderer.shader = shader;
-        renderer.begin(camera.combined, points ? gl.POINTS : gl.TRIANGLES);
+        renderer.begin(camera.combined, lines ? gl.LINES : gl.TRIANGLES);
         
         var r = color.r,
             g = color.g,
             b = color.b,
             a = color.a;
 
-        for (var i=0; i<particles.length; i++) {
-            var p = particles[i];
-            var pos = p.position;
+        if (lines) {
+            for (var i=0; i<particles.length; i+=3) {
+                var p1 = particles[i];
+                var p2 = particles[i+1];
+                var p3 = particles[i+2];
+                var p4 = (i+3)<particles.length ? particles[i+3] : null;
+                
 
-            renderer.color(r, g, b, a);
-            renderer.vertex( pos.x, pos.y, pos.z );
+                renderer.color(r, g, b, a);
+                renderer.vertex( p1.position.x, p1.position.y, p1.position.z );
+
+                renderer.color(r, g, b, a);
+                renderer.vertex( p2.position.x, p2.position.y, p2.position.z );
+
+                renderer.color(r, g, b, a);
+                renderer.vertex( p3.position.x, p3.position.y, p3.position.z );
+                
+                renderer.color(r, g, b, a);
+                renderer.vertex( p1.position.x, p1.position.y, p1.position.z );
+
+                if (p4 !== null) {
+                    renderer.color(0, 0, 0, 0);
+                    renderer.vertex( p1.position.x, p1.position.y, p1.position.z );
+                    renderer.color(0, 0, 0, 0);
+                    renderer.vertex( p4.position.x, p4.position.y, p4.position.z );
+                }
+                    
+                // renderer.color(0, 0, 0, 0);
+                // renderer.vertex( p2.position.x, p2.position.y, p2.position.z );
+                // renderer.color(0, 0, 0, 0);
+                // renderer.vertex( p3.position.x, p3.position.y, p3.position.z );
+
+            }
+        } else {
+            for (var i=0; i<particles.length; i++) {
+                var p = particles[i];
+                var pos = p.position;
+
+                renderer.color(r, g, b, a);
+                renderer.vertex( pos.x, pos.y, pos.z );
+            }
         }
+            
 
         renderer.end();
     },
 
-    render: function(width, height, particles, camera, color, points) {
+    render: function(width, height, particles, camera, color, lines) {
         var useAA = this.useAA;
         var gl = this.context.gl;
 
@@ -136,7 +173,7 @@ var WebGLRenderer = new Class({
 
             gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT);
-            this._renderNormal(particles, camera, color, points);
+            this._renderNormal(particles, camera, color, lines);
             fbo.end();
 
             var out = AA_SIZE/2;
@@ -150,7 +187,7 @@ var WebGLRenderer = new Class({
             camera.viewportHeight = h;
             camera.update();
         } else {
-            this._renderNormal(particles, camera, color, points);
+            this._renderNormal(particles, camera, color, lines);
         }
         
         gl.depthMask(true);

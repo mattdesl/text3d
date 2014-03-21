@@ -20,6 +20,7 @@
     "shape2d": "0.0.0",
     "kami": "~0.3.0",
     "cam3d": "~0.1.1",
-    "vecmath": "~0.1.0"
+    "vecmath": "~0.1.0",
+    "kami-mesh": "git://github.com/mattdesl/kami-mesh"
   }
 }

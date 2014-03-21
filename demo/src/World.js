@@ -23,7 +23,7 @@ var World = new Class({
 
         this.accuracy = 1;
 
-        this.defaultStiffness = 0.2;
+        this.defaultStiffness = 0.5;
         this.defaultRestingDistance = undefined;
     },
 

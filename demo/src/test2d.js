@@ -29,8 +29,8 @@ domready(function() {
 
     document.body.appendChild(canvas);
 
-    var webgl = false;
-    var useAA = false;
+    var webgl = true;
+    var useAA = true;
 
     var context;
 
@@ -40,9 +40,6 @@ domready(function() {
         });
     } else 
         context = canvas.getContext("2d");  
-
-    
-
 
     var textManager = new TextManager("STORYTELLING.\nCRAFT. TECHNOLOGY.", {
         fontSize: 50,

@@ -23,7 +23,7 @@ var Constraint = new Class({
 		this.restingDistance = restingDistance;
 		this.originalRestingDistance = this.restingDistance;
         this.stiffness = typeof stiffness === "number" ? stiffness : 0.01;
-        
+        this.originalStiffness = stiffness;
 
         this.tearDistance = Number.MAX_VALUE;
 	},

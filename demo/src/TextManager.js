@@ -38,6 +38,10 @@ var vert = fs.readFileSync( __dirname + '/shaders/text.vert', 'utf8' );
 var frag = fs.readFileSync( __dirname + '/shaders/text.frag', 'utf8' );
 var fxaa = fs.readFileSync( __dirname + '/shaders/fxaa.frag', 'utf8' );
 
+///////
+///GET RID OF THESE FOR PRODUCTION
+var Preset0 = JSON.parse( fs.readFileSync( __dirname + '/presets/ImFly.json', 'utf8') );
+
 //draws the particles as a triangle list
 function drawTriangles(context, particles, camera, fill, noIntersect) {
     context.beginPath();
@@ -104,58 +108,140 @@ function easeOutExpo (t, b, c, d) {
 var TextManager = new Class({
 
     initialize: function(text, options, TweenLite) {
-        options = options||{};
+        this.options = this.toDefaults(options);
+        this.text = text;
 
         this.TweenLite = TweenLite;
 
-        this.face = util.getFace('uni sans bold');
-        this.fontSize = options.fontSize || 50;
+        this.world = new World();
 
+        this.camera = new OrthographicCamera();
+
+        this.face = util.getFace('uni sans bold');
+        this.webGLRenderer = null;
+        this.scale = 1.0;
+        this.position = new Vector3(0, 0, 0);
+
+        this._finishTweenReset = this.finishTweenReset.bind(this);
+        this._startTweenReset = this.startTweenReset.bind(this);
+
+        this.glyphData = [];
+
+        this.create();
+
+        this.setupUI();
+    },
+
+    resetOptions: function() {
+        this.options = {};
+        this.toDefaults(this.options);
+    },
+
+    uiRecreate: function() {
+
+    },
+
+    setupUI: function() {
+        var gui = new dat.GUI({
+            load: Preset0
+        });
+        gui.remember(this.options);
+        // gui.useLocalStorage = false;
+
+        var mesh = gui.addFolder('Text Mesh');
+        mesh.add(this.options, 'fill');
+        // mesh.add(this.options, 'fontSize', 12, 150);
+        mesh.add(this.options, 'steps', 3, 30);
+        mesh.add(this.options, 'simplify', 0, 50);
+        mesh.add(this, 'create');
+        mesh.open();
+
+        var physics = gui.addFolder('Physics');
+        physics.add(this.options, 'spinStrength', 0, 30);
+        physics.add(this.options, 'mouseStrength', 0, 30);
+        physics.add(this.options, 'mouseRadius', 0, 30);
+        physics.add(this.options, 'minMouseMotion', 0, 5);
+        physics.add(this.options, 'rigidness', 0.0, 0.2);
+        physics.open();
+
+        var reset = gui.addFolder('Reset Animation');
+        reset.add(this.options, 'resetDuration', 0, 4);
+        reset.add(this.options, 'resetDelay', 0, 4);
+        // reset.add(this.options, 'resetDelayIncrement', 0, .2);
+        reset.add(this.options, 'resetLinear');
+        reset.add(this.options, 'resetWhileIdle');
+        reset.add(this.options, 'resetByDistance');
+        reset.open();
+
+
+    },
+
+    toDefaults: function(options) {
+        options.style = typeof options.style === "number" ? options.style : 0;
+        options.spinStrength = typeof options.spinStrength === "number" ? options.spinStrength : 10;
+        options.mouseStrength = typeof options.mouseStrength === "number" ? options.mouseStrength : 5;
+        options.mouseRadius = typeof options.mouseRadius === "number" ? options.mouseRadius : 15;
+        options.minMouseMotion = typeof options.minMouseMotion === "number" ? options.minMouseMotion : 2;
+        options.resetLinear = !!options.resetLinear;
+        options.resetDuration = typeof options.resetDuration === "number" ? options.resetDuration : 1;
+        options.resetDelay = typeof options.resetDelay === "number" ? options.resetDelay : .5;
+        options.resetDelayIncrement = typeof options.resetDelayIncrement === "number" ? options.resetDelayIncrement : .05;
+        options.resetWhileIdle = typeof options.resetWhileIdle === "boolean" ? options.resetWhileIdle : true;
+        options.resetByDistance = typeof options.resetByDistance === "boolean" ? options.resetByDistance : true;
+        options.rigidness = typeof options.rigidness === "number" ? options.rigidness : 0.0;
+
+        options.fill = typeof options.fill === "boolean" ? options.fill : true;
+
+        this.fontSize = options.fontSize || 50;
         this.snap = typeof options.snap === "number" ? options.snap : 0.995;
 
-        var steps = typeof options.steps || 10;
-        var simplify;
+        options.snap = this.snap;
+        options.fontSize = this.fontSize;
+        options.steps = typeof options.steps === "number" ? options.steps : 10;
+        options.simplify = typeof options.simplify === "number" ? options.simplify : 50;
+        return options;
+    },
+
+    create: function() {
+        var text = this.text;
+
+        var options = this.options;
+        this.toDefaults(this.options);
+
+        var steps = ~~options.steps;
 
         if (typeof options.simplify === "number") {
             if (options.simplify === 0)
                 simplify = 0;
             else
-                simplify = this.fontSize/Math.max(10, options.simplify)
+                simplify = this.fontSize/Math.max(10, ~~options.simplify)
         } else
             simplify = this.fontSize/50;
 
-        
         Glyph.SAVE_CONTOUR = false;
+
 
         this.text = text;
         this.textMesh = new Text3D(text, this.face, this.fontSize, steps, simplify);
         
-        this.resetting = false,
-        this.resetTime = 0,
-        this.resetDuration = 10;
 
-        var shockParams = new Vector3(10, 0.7, 0.1);
+
         this.mouse = new Vector3();
         this.lastMouse = new Vector3();
-        var normCoords = new Vector3();
-
+        
         this.color = { r: 0, g: 0, b: 0, a: 1 };
 
-        this.camera = new OrthographicCamera();
-        
-        this.world = new World();
+        this.world.particles.length = 0;
         this.world.addText3D(this.textMesh);
+        
+        if (this.webGLRenderer)
+            this.webGLRenderer.setup(this.world.particles);
 
-        this.webGLRenderer = null;
-
-        this.scale = 1.0;
         this.width = this.textMesh.bounds.maxX-this.textMesh.bounds.minX;
         this.height = this.textMesh.bounds.maxY-this.textMesh.bounds.minY;
 
-        this.position = new Vector3(0, 0, 0);
 
-        this.currentGlyph = -1;
-        this.glyphData = [];
+        this.glyphData.length = 0;
         for (var i=0; i<this.textMesh.glyphs.length; i++) {
             this.glyphData[i] = {
                 mouseOver: false,
@@ -164,15 +250,8 @@ var TextManager = new Class({
             };
         }
 
-        //no floor
-        // world.floor = height;
-
-        //destroy the text object to free up some memory
+        //destroy the text contour object to free up some memory
         this.textMesh.destroy();
-
-        this.style = 0;
-        this._finishTweenReset = this.finishTweenReset.bind(this);
-        this._startTweenReset = this.startTweenReset.bind(this);
 
         this._createRandomForces();
     },
@@ -192,52 +271,20 @@ var TextManager = new Class({
 
 
     update: function(dt) {
-        var world = this.world,
-            resetDuration = this.resetDuration;
+        var world = this.world;
 
         world.step(dt);
-
-        // if (this.resetting) {
-        //     var a = this.resetTime / resetDuration;
-        //     a = easeOutExpo(this.resetTime, 0, 1, resetDuration);
-            
-        //     // if (a > this.snap) {//snap to edge
-        //     //     a = 1;
-        //     // }
-
-        //     this.resetTime += 0.1;
-        //     if (this.resetTime > resetDuration) {
-        //         this.resetting = false;
-        //         this.resetTime = 0;
-
-        //         var a = 1;
-        //         for (var i=0; i<world.particles.length; i++) {
-        //             var p = world.particles[i];
-
-        //             p.position.copy(p.lastPosition).lerp(p.original, a);
-        //             p.velocity.lerp(zero, a);
-        //             p.acceleration.lerp(zero, a);
-        //         }
-
-        //     } else {
-        //         for (var i=0; i<world.particles.length; i++) {
-        //             var p = world.particles[i];
-
-        //             p.position.copy(p.lastPosition).lerp(p.original, a);
-        //             p.velocity.lerp(zero, a);
-        //             p.acceleration.lerp(zero, a);
-        //         }
-        //     }
-        // } 
 
         this._resolveTweens();
         this._updateKillTweens();
 
-        if (this.style === 0)
+        var options = this.options;
+
+        if (options.style === 0)
             this._updateMouseInteractions();
-        else if (this.style === 1)
+        else if (options.style === 1)
             this._updateMouseInteractions2();
-        else if (this.style === 2)
+        else if (options.style === 2)
             this._updateMouseInteractions3();
     },
 
@@ -254,6 +301,12 @@ var TextManager = new Class({
                 p.position.copy(p.lastPosition).lerp(p.original, a);
                 p.velocity.lerp(zero, a);
                 p.acceleration.lerp(zero, a);
+
+                for (var k=0; k<p.constraints.length; k++) {
+                    var c = p.constraints[k];
+                    c.restingDistance = lerp(c.restingDistance, c.originalRestingDistance, a);
+                    c.stiffness = lerp(c.stiffness, c.originalStiffness, a);
+                }
             }
         }
     },
@@ -264,25 +317,20 @@ var TextManager = new Class({
         for (var i=0; i<world.particles.length; i++) {
             
 
-            var scale = 10;
+            var scale = this.options.spinStrength;
             tmp.random();
             tmp.z = 0;
             tmp.x *= scale;
             tmp.y *= scale;
 
-
-
             world.particles[i].finalPosition.add(tmp);
-            // world.particles[i+1].position.add(tmp);
-            // world.particles[i+2].position.add(tmp);
-            // var p = world.particles[i];
-
-            // p.position.add(tmp);
         }
     },
 
     _updateKillTweens: function() {
         var mouse = this.mouse;
+
+        var mouseMove = (mouse.distance(this.lastMouse) > 2);
 
         for (var i=0; i<this.textMesh.glyphs.length; i++) {
             var gData = this.glyphData[i];
@@ -291,17 +339,22 @@ var TextManager = new Class({
             var b = g.bounds;
 
             var withinGlyph = mouse.x > b.minX && mouse.x < b.maxX && mouse.y > b.minY && mouse.y < b.maxY
-            
+                
+            if (!mouseMove && this.options.resetWhileIdle) {
+                gData.mouseOver = false;
+                this._addTween(i, this.options.resetDelay);
+                continue;
+            }
 
             var dist = mouse.distance(tmp.set( b.minX+ (b.maxX-b.minX)/2, b.minY + (b.maxY-b.minY)/2 ));
 
-            if (dist < 50) {
+            if (dist < this.options.mouseRadius) {
                 // if (gData.tweening)
                 this.TweenLite.killTweensOf( gData );
                 gData.mouseOver = true;
                 gData.tweening = false;
                 gData.resetting = false;
-                gData.tween =0;
+                gData.tween = 0;
 
 
                 //The mouse is under this !
@@ -324,39 +377,57 @@ var TextManager = new Class({
         }
     },
 
-    _updateGlyphHitTest: function() {
+    _addTween: function(i, startDelay) {
+        startDelay = startDelay||0;
 
-        // this.currentGlyph = this.getGlyphUnderMouse();
-                
-        
+        var gData = this.glyphData[i];
+        var options = this.options;
+
+
+        if (options.resetByDistance) {
+            var mouse = this.mouse;
+            var glyph = this.textMesh.glyphs[i];
+            var b = glyph.bounds;
+
+            var dist = mouse.distance(tmp.set( b.minX+ (b.maxX-b.minX)/2, b.minY + (b.maxY-b.minY)/2 ));    
+
+            startDelay += dist / ( this.screenLength ) ;
+
+        } else {
+            startDelay += ( i * options.resetDelayIncrement);
+        }
+        //console.log("BY DIST", options.resetByDistance)
+
+        if (!gData.mouseOver && !gData.tweening) {
+            gData.tweening = true;
+            gData.resetting = false;
+
+            // this._saveGlyph(i);
+            this.TweenLite.to( gData, options.resetDuration, {
+                overwrite: 1,
+                tween: 1.0,
+                ease: options.resetLinear ? Linear.easeNone : Expo.easeOut,
+                delay: startDelay + options.resetDelay,
+                onStart: this._startTweenReset,
+                onStartParams: [ i ],
+                onComplete: this._finishTweenReset,
+                onCompleteParams: [ i ]
+            });
+        }
+    },
+
+    _updateGlyphHitTest: function() {
+        var options = this.options;
 
         //Any remaining glyphs that aren't tweening, and aren't under mouse, just tween them 
         //after a short delay
+        var delay = 0;
         for (var i=0; i<this.textMesh.glyphs.length; i++) {
-            var gData = this.glyphData[i];
-            if (!gData.mouseOver && !gData.tweening) {
-                gData.tweening = true;
-                gData.resetting = false;
-
-                // this._saveGlyph(i);
-                this.TweenLite.to( gData, 1.0, {
-                    overwrite: 1,
-                    tween: 1.0,
-                    ease: Expo.easeOut,
-                    delay: 1.0 + (i*.01),
-                    onStart: this._startTweenReset,
-                    onStartParams: [ i ],
-                    onComplete: this._finishTweenReset,
-                    onCompleteParams: [ i ]
-                });
-            }
+            this._addTween(i, delay);
+            // delay += options.resetDelayIncrement;
         }
 
         this._updateKillTweens();
-
-        // if (oldGlyph !== this.currentGlyph && oldGlyph !== -1) {
-        //     console.log("LEAVE", oldGlyph)
-        // }
     },
 
     _updateMouseInteractions: function() {
@@ -366,24 +437,25 @@ var TextManager = new Class({
             width = this.camera.viewportWidth,
             height = this.camera.viewportHeight;
 
+        var options = this.options;
+        var mousePush = options.mouseStrength;
+        var mousePushThreshold = options.mouseRadius;
 
-        var mousePush = 5;
-        var mousePushThreshold = 15;
-
-        var explodeThreshold = 30;
-        var strength = 3;
+        var strength = options.spinStrength;
         tmp3.copy( mouse );
         tmp3.sub( lastMouse );
         tmp3.normalize();
         tmp3.scale(mousePush);
 
-        var mouseMoved = mouse.distance(lastMouse) > 2;
+        var mouseMoved = mouse.distance(lastMouse) > options.minMouseMotion;
+
+        // if (options.resetWhileIdle && !mouseMoved)
+        //     return;
 
         var explode = true;
         for (var i=0; i<world.particles.length; i++) {
             var p = world.particles[i];
 
-                
             var pDist = p.position.distance(mouse);
             if ( pDist < mousePushThreshold) {
                 if (mouseMoved) {
@@ -391,28 +463,46 @@ var TextManager = new Class({
                 }
             }
 
-            if (pDist < explodeThreshold) {
+            if (pDist < mousePushThreshold/2) {
                 force.random();
                 // force.z = 0;
 
-                
 
                 var dist = this._normalizedDistanceFromMouse(p);
                 if (dist < 0.5) {
-                    var power = lerp(strength, 0.0, dist);
+                    var power = lerp(strength, 0, dist);
                     force.scale( power );
 
                     force.z = 0;
 
+                    // if (options.rigid) {
+                    //     p.position.add(force);
+                    // }
                     p.velocity.add(force);
-                }
-                
+
+
+                    // for (var j=0; j<p.constraints.length; j++) {
+                    //     p.constraints[j].stiffness = 0.01;
+                    //     p.constraints[j].restingDistance -= lerp(15, 0, dist);
+                    //     // p.constraints[j].restingDistance = Math.max(5, p.constraints[j].restingDistance);
+                    // }
+                        
+                } else if (dist > 20) {
                     
-            } else {
-                // var a = 0.1;
-                // p.position.lerp(p.original, a);
-                // p.velocity.lerp(zero, a);
-                // p.acceleration.lerp(zero, a);
+                }                
+            } else if (options.rigidness > 0) {
+                var a = options.rigidness;
+                p.position.lerp(p.original, a);
+                p.velocity.lerp(zero, a);
+                p.acceleration.lerp(zero, a);
+
+                // if (pDist < mousePushThreshold*4) {
+                //     for (var j=0; j<p.constraints.length; j++) {
+                //         p.constraints[j].stiffness = 0.05;
+                //         // p.constraints[j].restingDistance -= .5;
+                //         // p.constraints[j].restingDistance = Math.max(5, p.constraints[j].restingDistance);
+                //     }
+                // }
             }
         }
 
@@ -542,6 +632,8 @@ var TextManager = new Class({
         this.camera.setToOrtho(yDown, width, height);
         this.camera.translate(-this.position.x*zoom, -this.position.y*zoom, this.position.z);
         this.camera.update();
+
+        this.screenLength = Math.sqrt(width*width + height*height);
     },
 
     updateCamera: function() {
@@ -585,9 +677,12 @@ var TextManager = new Class({
         this._savePosition();
     },
 
-    renderCanvas: function(context, fill, noIntersect) {
-        fill = typeof fill === "boolean" ? fill : true;
-        noIntersect = typeof noIntersect === "boolean" ? noIntersect : false;
+    renderCanvas: function(context) {
+        // fill = typeof fill === "boolean" ? fill : true;
+        // noIntersect = typeof noIntersect === "boolean" ? noIntersect : false;
+
+        var fill = this.options.fill;
+        var noIntersect = false;
 
         var style = "rgba("+ ~~(this.color.r*255)+","+ ~~(this.color.g*255) +","+ ~~(this.color.b*255) + "," + this.color.a +")";
         if (fill)
@@ -599,7 +694,7 @@ var TextManager = new Class({
     },
 
     destroy: function() {
-        this.world.points.length = 0;
+        this.world.particles.length = 0;
         this.text = null;
         this.world = null;
         this.webGLRenderer = null;
@@ -607,10 +702,11 @@ var TextManager = new Class({
         this.face = null;
     },
 
-    renderWebGL: function(points) {
+    renderWebGL: function() {
+        var lines = !this.options.fill;
         if (this.webGLRenderer) {
             this.webGLRenderer.render(this.width, this.height, 
-                        this.world.particles, this.camera, this.color, points);
+                        this.world.particles, this.camera, this.color, lines);
         }
     },
 });
