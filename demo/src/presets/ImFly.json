@@ -1,12 +1,15 @@
 {
-  "preset": "Crows",
+  "preset": "Fling",
   "closed": false,
   "remembered": {
     "Default": {
       "0": {
         "fill": true,
-        "steps": 10.44442529726004,
+        "steps": 10,
         "simplify": 50,
+        "letterSpacing": 0,
+        "spaceWidth": 25,
+        "align": "CENTER",
         "spinStrength": 10,
         "mouseStrength": 5,
         "mouseRadius": 15,
@@ -24,6 +27,9 @@
         "fill": true,
         "steps": 10.44442529726004,
         "simplify": 50,
+        "letterSpacing": 0,
+        "spaceWidth": 25,
+        "align": "CENTER",
         "spinStrength": 11.91108047561606,
         "mouseStrength": 0.6617266930897812,
         "mouseRadius": 27.461657763225915,
@@ -41,6 +47,9 @@
         "fill": true,
         "steps": 10.44442529726004,
         "simplify": 50,
+        "letterSpacing": 0,
+        "spaceWidth": 25,
+        "align": "CENTER",
         "spinStrength": 17.86662071342409,
         "mouseStrength": 3.308633465448906,
         "mouseRadius": 15,

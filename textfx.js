@@ -1,7 +1,8 @@
-!function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.TextManager=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
-var Class = _dereq_('klasse');
+!function(e){"object"==typeof exports?module.exports=e():"function"==typeof define&&define.amd?define(e):"undefined"!=typeof window?window.TextManager=e():"undefined"!=typeof global?global.TextManager=e():"undefined"!=typeof self&&(self.TextManager=e())}(function(){var define,module,exports;
+return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+var Class = require('klasse');
 
-var Vector3 = _dereq_('vecmath').Vector3;
+var Vector3 = require('vecmath').Vector3;
 
 var tmp = new Vector3();
 
@@ -24,7 +25,7 @@ var Constraint = new Class({
 		this.restingDistance = restingDistance;
 		this.originalRestingDistance = this.restingDistance;
         this.stiffness = typeof stiffness === "number" ? stiffness : 0.01;
-        
+        this.originalStiffness = stiffness;
 
         this.tearDistance = Number.MAX_VALUE;
 	},
@@ -76,35 +77,35 @@ var Constraint = new Class({
 
 
 module.exports = Constraint;
-},{"klasse":34,"vecmath":53}],2:[function(_dereq_,module,exports){
+},{"klasse":44,"vecmath":64}],2:[function(require,module,exports){
 // var domready = require('domready');
 // require('raf.js');
 
-var Vector2 = _dereq_('vecmath').Vector2;
-var Vector3 = _dereq_('vecmath').Vector3;
-var Matrix4 = _dereq_('vecmath').Matrix4;
+var Vector2 = require('vecmath').Vector2;
+var Vector3 = require('vecmath').Vector3;
+var Matrix4 = require('vecmath').Matrix4;
 
-var World = _dereq_('./World');
-var Constraint = _dereq_('./Constraint');
-var smoothstep = _dereq_('interpolation').smoothstep;
-var lerp = _dereq_('interpolation').lerp;
+var World = require('./World');
+var Constraint = require('./Constraint');
+var smoothstep = require('interpolation').smoothstep;
+var lerp = require('interpolation').lerp;
 
-var util = _dereq_('text3d').util;
-var Glyph = _dereq_('text3d').Glyph;
-var Text3D = _dereq_('text3d').Text3D;
+var util = require('text3d').util;
+var Glyph = require('text3d').Glyph;
+var Text3D = require('text3d').Text3D;
 
-var OrthographicCamera = _dereq_('cam3d').OrthographicCamera;
-var PerspectiveCamera = _dereq_('cam3d').PerspectiveCamera;
+var OrthographicCamera = require('cam3d').OrthographicCamera;
+var PerspectiveCamera = require('cam3d').PerspectiveCamera;
 
-var Class = _dereq_('klasse');
+var Class = require('klasse');
 
 ///hook in typeface
-var _typeface_js = _dereq_('./typeface-stripped');
-var uni_sans = _dereq_('../vendor/uni_sans_bold_B.typeface');
+var _typeface_js = require('./typeface-stripped');
+var uni_sans = require('../vendor/uni_sans_bold_B.typeface');
 
 _typeface_js.loadFace(uni_sans);
 
-var WebGLRenderer = _dereq_('./WebGLRenderer');
+var WebGLRenderer = require('./WebGLRenderer');
 
 var tmp = new Vector3();
 var tmp2 = new Vector3();
@@ -112,10 +113,24 @@ var tmp3 = new Vector3();
 var zero = new Vector3();
 var force = new Vector3();
 
-var fs = _dereq_('fs');
+var fs = require('fs');
 var vert = "attribute vec4 Position;\nattribute vec4 Color;\n// attribute vec2 TexCoord0;\n\nuniform mat4 u_projModelView;\n\nvarying vec4 v_col;\n// varying vec2 v_texCoord0;\n\nvoid main() {\n\tgl_Position = u_projModelView * vec4(Position.xyz, 1.0);\n\tv_col = Color;\n\t// v_texCoord0 = TexCoord0;\n}";
 var frag = "#ifdef GL_ES\nprecision mediump float;\n#endif\nvarying vec4 v_col;\n// varying vec2 v_texCoord0;\n// uniform sampler2D u_sampler0;\n\nvoid main() {\n\tgl_FragColor = v_col; //* texture2D(u_sampler0, v_texCoord0);\n}";
-var fxaa = "/*#ifdef GL_ES\nprecision mediump float;\n#endif\nvarying vec4 vColor;\nvarying vec2 vTexCoord0;\n\nuniform sampler2D u_texture0;\n\nvoid main() {\n    gl_FragColor = vColor * texture2D(u_texture0, vTexCoord0) * 0.5;\n}*/\n\n// FXAA shader, GLSL code adapted from:\n// http://horde3d.org/wiki/index.php5?title=Shading_Technique_-_FXAA\n// Whitepaper describing the technique:\n// http://developer.download.nvidia.com/assets/gamedev/files/sdk/11/FXAA_WhitePaper.pdf\n\n\n#ifdef GL_ES\nprecision mediump float;\nprecision mediump int;\n#endif\n\nuniform sampler2D u_texture0;\n\n// The inverse of the texture dimensions along X and Y\nuniform vec2 texcoordOffset;\n\nvarying vec4 vColor;\nvarying vec2 vTexCoord0;\n\nvoid main() {\n    // The parameters are hardcoded for now, but could be\n    // made into uniforms to control fromt he program.\n    float FXAA_OPT = 125.0;\n    float FXAA_SPAN_MAX = FXAA_OPT;\n    float FXAA_REDUCE_MUL = 1.0/FXAA_OPT;\n    float FXAA_REDUCE_MIN = (1.0/10.0);\n\n    vec3 rgbNW = texture2D(u_texture0, vTexCoord0.xy + (vec2(-1.0, -1.0) * texcoordOffset)).xyz;\n    vec3 rgbNE = texture2D(u_texture0, vTexCoord0.xy + (vec2(+1.0, -1.0) * texcoordOffset)).xyz;\n    vec3 rgbSW = texture2D(u_texture0, vTexCoord0.xy + (vec2(-1.0, +1.0) * texcoordOffset)).xyz;\n    vec3 rgbSE = texture2D(u_texture0, vTexCoord0.xy + (vec2(+1.0, +1.0) * texcoordOffset)).xyz;\n    \n    vec4 rgba = texture2D(u_texture0, vTexCoord0.xy);\n    vec3 rgbM = rgba.xyz;\n\n    vec3 luma = vec3(0.299, 0.587, 0.114);\n    float lumaNW = dot(rgbNW, luma);\n    float lumaNE = dot(rgbNE, luma);\n    float lumaSW = dot(rgbSW, luma);\n    float lumaSE = dot(rgbSE, luma);\n    float lumaM  = dot( rgbM, luma);\n\n    float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));\n    float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));\n\n    vec2 dir;\n    dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));\n    dir.y =  ((lumaNW + lumaSW) - (lumaNE + lumaSE));\n\n    float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) * (0.25 * FXAA_REDUCE_MUL), FXAA_REDUCE_MIN);\n      \n    float rcpDirMin = 1.0/(min(abs(dir.x), abs(dir.y)) + dirReduce);\n\n    dir = min(vec2(FXAA_SPAN_MAX,  FXAA_SPAN_MAX), \n          max(vec2(-FXAA_SPAN_MAX, -FXAA_SPAN_MAX), dir * rcpDirMin)) * texcoordOffset;\n    \t\n    vec3 rgbA = (1.0/2.0) * (\n                texture2D(u_texture0, vTexCoord0.xy + dir * (1.0/3.0 - 0.5)).xyz +\n                texture2D(u_texture0, vTexCoord0.xy + dir * (2.0/3.0 - 0.5)).xyz);\n    vec3 rgbB = rgbA * (1.0/2.0) + (1.0/4.0) * (\n                texture2D(u_texture0, vTexCoord0.xy + dir * (0.0/3.0 - 0.5)).xyz +\n                texture2D(u_texture0, vTexCoord0.xy + dir * (3.0/3.0 - 0.5)).xyz);\n    float lumaB = dot(rgbB, luma);\n\n    if((lumaB < lumaMin) || (lumaB > lumaMax)){\n      gl_FragColor.xyz=rgbA;\n    } else {\n      gl_FragColor.xyz=rgbB;\n    }\n    gl_FragColor.a = rgba.a;\n      \n    gl_FragColor *= vColor;\n}";
+var vignetteFrag = "#ifdef GL_ES\nprecision mediump float;\n#endif\n\nuniform sampler2D u_texture0;\n\nvarying vec4 vColor;\nvarying vec2 vTexCoord0;\n\nvoid main() {\n\tfloat dist = smoothstep(0.5, 0.35, length(vTexCoord0.xy - 0.5));\n\tgl_FragColor = vColor * texture2D(u_texture0, vTexCoord0);\n\tgl_FragColor.a *= dist;\n}";
+
+
+
+/////// LIST OF THINGS TO REMOVE BEFORE PRODUCTION
+/// - Reduce Mesh vert size since no lines is necessary
+/// - Remove preset / GUI
+/// - Remove dat.gui.v2 from main
+/// - Remove cache bust from main
+/// - failIfMajorPerformanceCaveat
+
+
+///////
+///GET RID OF THESE FOR PRODUCTION
+var Preset0 = JSON.parse( "{\n  \"preset\": \"Crows\",\n  \"closed\": false,\n  \"remembered\": {\n    \"Default\": {\n      \"0\": {\n        \"fill\": true,\n        \"steps\": 10.44442529726004,\n        \"simplify\": 50,\n        \"spinStrength\": 10,\n        \"mouseStrength\": 5,\n        \"mouseRadius\": 15,\n        \"minMouseMotion\": 2,\n        \"rigidness\": 0,\n        \"resetDuration\": 1,\n        \"resetDelay\": 1.191108047561606,\n        \"resetLinear\": false,\n        \"resetWhileIdle\": false,\n        \"resetByDistance\": true\n      }\n    },\n    \"Crows\": {\n      \"0\": {\n        \"fill\": true,\n        \"steps\": 10.44442529726004,\n        \"simplify\": 50,\n        \"spinStrength\": 11.91108047561606,\n        \"mouseStrength\": 0.6617266930897812,\n        \"mouseRadius\": 27.461657763225915,\n        \"minMouseMotion\": 2,\n        \"rigidness\": 0,\n        \"resetDuration\": 1,\n        \"resetDelay\": 1.0146475960709977,\n        \"resetLinear\": false,\n        \"resetWhileIdle\": false,\n        \"resetByDistance\": true\n      }\n    },\n    \"Fling\": {\n      \"0\": {\n        \"fill\": true,\n        \"steps\": 10.44442529726004,\n        \"simplify\": 50,\n        \"spinStrength\": 17.86662071342409,\n        \"mouseStrength\": 3.308633465448906,\n        \"mouseRadius\": 15,\n        \"minMouseMotion\": 0.38600723763570566,\n        \"rigidness\": 0.04632086851628468,\n        \"resetDuration\": 1.146992934688954,\n        \"resetDelay\": 1.191108047561606,\n        \"resetLinear\": false,\n        \"resetWhileIdle\": false,\n        \"resetByDistance\": true\n      }\n    }\n  },\n  \"folders\": {\n    \"Text Mesh\": {\n      \"preset\": \"Default\",\n      \"closed\": false,\n      \"folders\": {}\n    },\n    \"Physics\": {\n      \"preset\": \"Default\",\n      \"closed\": false,\n      \"folders\": {}\n    },\n    \"Reset Animation\": {\n      \"preset\": \"Default\",\n      \"closed\": false,\n      \"folders\": {}\n    }\n  }\n}" );
 
 //draws the particles as a triangle list
 function drawTriangles(context, particles, camera, fill, noIntersect) {
@@ -182,59 +197,149 @@ function easeOutExpo (t, b, c, d) {
 
 var TextManager = new Class({
 
-    initialize: function(text, options, TweenLite) {
-        options = options||{};
+    initialize: function(text, options, TweenLite, datGUI) {
+        this.options = this.toDefaults(options);
+        this.text = text;
 
+        this.datGUI = datGUI;
         this.TweenLite = TweenLite;
 
-        this.face = util.getFace('uni sans bold');
-        this.fontSize = options.fontSize || 50;
+        this.world = new World();
 
+        this.camera = new OrthographicCamera();
+
+        this.face = util.getFace('uni sans bold');
+        this.webGLRenderer = null;
+        this.scale = 1.0;
+        this.position = new Vector3(0, 0, 0);
+
+        this._finishTweenReset = this.finishTweenReset.bind(this);
+        this._startTweenReset = this.startTweenReset.bind(this);
+
+        this.glyphData = [];
+
+        this.create();
+
+        this.setupUI();
+    },
+
+    resetOptions: function() {
+        this.options = {};
+        this.toDefaults(this.options);
+    },
+
+    uiRecreate: function() {
+
+    },
+
+    setupUI: function() {
+        if (!this.datGUI)
+            return;
+
+        var gui = new this.datGUI.GUI({
+            load: Preset0
+        });
+        gui.remember(this.options);
+        // gui.useLocalStorage = false;
+
+        var mesh = gui.addFolder('Text Mesh');
+        mesh.add(this.options, 'fill');
+        // mesh.add(this.options, 'fontSize', 12, 150);
+        mesh.add(this.options, 'steps', 3, 30);
+        mesh.add(this.options, 'simplify', 0, 50);
+        mesh.add(this, 'create');
+        mesh.open();
+
+        var physics = gui.addFolder('Physics');
+        physics.add(this.options, 'spinStrength', 0, 30);
+        physics.add(this.options, 'mouseStrength', 0, 30);
+        physics.add(this.options, 'mouseRadius', 0, 30);
+        physics.add(this.options, 'minMouseMotion', 0, 5);
+        physics.add(this.options, 'rigidness', 0.0, 0.2);
+        physics.open();
+
+        var reset = gui.addFolder('Reset Animation');
+        reset.add(this.options, 'resetDuration', 0, 4);
+        reset.add(this.options, 'resetDelay', 0, 4);
+        // reset.add(this.options, 'resetDelayIncrement', 0, .2);
+        reset.add(this.options, 'resetLinear');
+        reset.add(this.options, 'resetWhileIdle');
+        reset.add(this.options, 'resetByDistance');
+        reset.open();
+
+        //wtf
+        document.querySelector(".ac").style.zIndex = 100000;
+        document.querySelector(".save-row").style.width = "260px";
+        document.querySelector(".gears").style.width = "18px";
+        document.querySelector(".gears").style.height = "18px";
+    },
+
+    toDefaults: function(options) {
+        options.style = typeof options.style === "number" ? options.style : 0;
+        options.spinStrength = typeof options.spinStrength === "number" ? options.spinStrength : 10;
+        options.mouseStrength = typeof options.mouseStrength === "number" ? options.mouseStrength : 5;
+        options.mouseRadius = typeof options.mouseRadius === "number" ? options.mouseRadius : 15;
+        options.minMouseMotion = typeof options.minMouseMotion === "number" ? options.minMouseMotion : 2;
+        options.resetLinear = !!options.resetLinear;
+        options.resetDuration = typeof options.resetDuration === "number" ? options.resetDuration : 1;
+        options.resetDelay = typeof options.resetDelay === "number" ? options.resetDelay : .5;
+        options.resetDelayIncrement = typeof options.resetDelayIncrement === "number" ? options.resetDelayIncrement : .05;
+        options.resetWhileIdle = typeof options.resetWhileIdle === "boolean" ? options.resetWhileIdle : true;
+        options.resetByDistance = typeof options.resetByDistance === "boolean" ? options.resetByDistance : true;
+        options.rigidness = typeof options.rigidness === "number" ? options.rigidness : 0.0;
+
+        options.fill = typeof options.fill === "boolean" ? options.fill : true;
+
+        this.fontSize = options.fontSize || 50;
         this.snap = typeof options.snap === "number" ? options.snap : 0.995;
 
-        var steps = typeof options.steps || 10;
-        var simplify;
+        options.snap = this.snap;
+        options.fontSize = this.fontSize;
+        options.steps = typeof options.steps === "number" ? options.steps : 10;
+        options.simplify = typeof options.simplify === "number" ? options.simplify : 50;
+        return options;
+    },
+
+    create: function() {
+        var text = this.text;
+
+        var options = this.options;
+        this.toDefaults(this.options);
+
+        var steps = ~~options.steps;
 
         if (typeof options.simplify === "number") {
             if (options.simplify === 0)
                 simplify = 0;
             else
-                simplify = this.fontSize/Math.max(10, options.simplify)
+                simplify = this.fontSize/Math.max(10, ~~options.simplify)
         } else
             simplify = this.fontSize/50;
 
-        
         Glyph.SAVE_CONTOUR = false;
+
 
         this.text = text;
         this.textMesh = new Text3D(text, this.face, this.fontSize, steps, simplify);
         
-        this.resetting = false,
-        this.resetTime = 0,
-        this.resetDuration = 10;
 
-        var shockParams = new Vector3(10, 0.7, 0.1);
+
         this.mouse = new Vector3();
         this.lastMouse = new Vector3();
-        var normCoords = new Vector3();
-
+        
         this.color = { r: 0, g: 0, b: 0, a: 1 };
 
-        this.camera = new OrthographicCamera();
-        
-        this.world = new World();
+        this.world.particles.length = 0;
         this.world.addText3D(this.textMesh);
+        
+        if (this.webGLRenderer)
+            this.webGLRenderer.setup(this.world.particles);
 
-        this.webGLRenderer = null;
-
-        this.scale = 1.0;
         this.width = this.textMesh.bounds.maxX-this.textMesh.bounds.minX;
         this.height = this.textMesh.bounds.maxY-this.textMesh.bounds.minY;
 
-        this.position = new Vector3(0, 0, 0);
 
-        this.currentGlyph = -1;
-        this.glyphData = [];
+        this.glyphData.length = 0;
         for (var i=0; i<this.textMesh.glyphs.length; i++) {
             this.glyphData[i] = {
                 mouseOver: false,
@@ -243,15 +348,8 @@ var TextManager = new Class({
             };
         }
 
-        //no floor
-        // world.floor = height;
-
-        //destroy the text object to free up some memory
+        //destroy the text contour object to free up some memory
         this.textMesh.destroy();
-
-        this.style = 0;
-        this._finishTweenReset = this.finishTweenReset.bind(this);
-        this._startTweenReset = this.startTweenReset.bind(this);
 
         this._createRandomForces();
     },
@@ -271,52 +369,20 @@ var TextManager = new Class({
 
 
     update: function(dt) {
-        var world = this.world,
-            resetDuration = this.resetDuration;
+        var world = this.world;
 
         world.step(dt);
-
-        // if (this.resetting) {
-        //     var a = this.resetTime / resetDuration;
-        //     a = easeOutExpo(this.resetTime, 0, 1, resetDuration);
-            
-        //     // if (a > this.snap) {//snap to edge
-        //     //     a = 1;
-        //     // }
-
-        //     this.resetTime += 0.1;
-        //     if (this.resetTime > resetDuration) {
-        //         this.resetting = false;
-        //         this.resetTime = 0;
-
-        //         var a = 1;
-        //         for (var i=0; i<world.particles.length; i++) {
-        //             var p = world.particles[i];
-
-        //             p.position.copy(p.lastPosition).lerp(p.original, a);
-        //             p.velocity.lerp(zero, a);
-        //             p.acceleration.lerp(zero, a);
-        //         }
-
-        //     } else {
-        //         for (var i=0; i<world.particles.length; i++) {
-        //             var p = world.particles[i];
-
-        //             p.position.copy(p.lastPosition).lerp(p.original, a);
-        //             p.velocity.lerp(zero, a);
-        //             p.acceleration.lerp(zero, a);
-        //         }
-        //     }
-        // } 
 
         this._resolveTweens();
         this._updateKillTweens();
 
-        if (this.style === 0)
+        var options = this.options;
+
+        if (options.style === 0)
             this._updateMouseInteractions();
-        else if (this.style === 1)
+        else if (options.style === 1)
             this._updateMouseInteractions2();
-        else if (this.style === 2)
+        else if (options.style === 2)
             this._updateMouseInteractions3();
     },
 
@@ -333,6 +399,12 @@ var TextManager = new Class({
                 p.position.copy(p.lastPosition).lerp(p.original, a);
                 p.velocity.lerp(zero, a);
                 p.acceleration.lerp(zero, a);
+
+                for (var k=0; k<p.constraints.length; k++) {
+                    var c = p.constraints[k];
+                    c.restingDistance = lerp(c.restingDistance, c.originalRestingDistance, a);
+                    c.stiffness = lerp(c.stiffness, c.originalStiffness, a);
+                }
             }
         }
     },
@@ -343,25 +415,20 @@ var TextManager = new Class({
         for (var i=0; i<world.particles.length; i++) {
             
 
-            var scale = 10;
+            var scale = this.options.spinStrength;
             tmp.random();
             tmp.z = 0;
             tmp.x *= scale;
             tmp.y *= scale;
 
-
-
             world.particles[i].finalPosition.add(tmp);
-            // world.particles[i+1].position.add(tmp);
-            // world.particles[i+2].position.add(tmp);
-            // var p = world.particles[i];
-
-            // p.position.add(tmp);
         }
     },
 
     _updateKillTweens: function() {
         var mouse = this.mouse;
+
+        var mouseMove = (mouse.distance(this.lastMouse) > 2);
 
         for (var i=0; i<this.textMesh.glyphs.length; i++) {
             var gData = this.glyphData[i];
@@ -370,17 +437,22 @@ var TextManager = new Class({
             var b = g.bounds;
 
             var withinGlyph = mouse.x > b.minX && mouse.x < b.maxX && mouse.y > b.minY && mouse.y < b.maxY
-            
+                
+            if (!mouseMove && this.options.resetWhileIdle) {
+                gData.mouseOver = false;
+                this._addTween(i, this.options.resetDelay);
+                continue;
+            }
 
             var dist = mouse.distance(tmp.set( b.minX+ (b.maxX-b.minX)/2, b.minY + (b.maxY-b.minY)/2 ));
 
-            if (dist < 50) {
+            if (dist < this.options.mouseRadius) {
                 // if (gData.tweening)
                 this.TweenLite.killTweensOf( gData );
                 gData.mouseOver = true;
                 gData.tweening = false;
                 gData.resetting = false;
-                gData.tween =0;
+                gData.tween = 0;
 
 
                 //The mouse is under this !
@@ -403,39 +475,57 @@ var TextManager = new Class({
         }
     },
 
-    _updateGlyphHitTest: function() {
+    _addTween: function(i, startDelay) {
+        startDelay = startDelay||0;
 
-        // this.currentGlyph = this.getGlyphUnderMouse();
-                
-        
+        var gData = this.glyphData[i];
+        var options = this.options;
+
+
+        if (options.resetByDistance) {
+            var mouse = this.mouse;
+            var glyph = this.textMesh.glyphs[i];
+            var b = glyph.bounds;
+
+            var dist = mouse.distance(tmp.set( b.minX+ (b.maxX-b.minX)/2, b.minY + (b.maxY-b.minY)/2 ));    
+
+            startDelay += dist / ( this.screenLength ) ;
+
+        } else {
+            startDelay += ( i * options.resetDelayIncrement);
+        }
+        //console.log("BY DIST", options.resetByDistance)
+
+        if (!gData.mouseOver && !gData.tweening) {
+            gData.tweening = true;
+            gData.resetting = false;
+
+            // this._saveGlyph(i);
+            this.TweenLite.to( gData, options.resetDuration, {
+                overwrite: 1,
+                tween: 1.0,
+                ease: options.resetLinear ? Linear.easeNone : Expo.easeOut,
+                delay: startDelay + options.resetDelay,
+                onStart: this._startTweenReset,
+                onStartParams: [ i ],
+                onComplete: this._finishTweenReset,
+                onCompleteParams: [ i ]
+            });
+        }
+    },
+
+    _updateGlyphHitTest: function() {
+        var options = this.options;
 
         //Any remaining glyphs that aren't tweening, and aren't under mouse, just tween them 
         //after a short delay
+        var delay = 0;
         for (var i=0; i<this.textMesh.glyphs.length; i++) {
-            var gData = this.glyphData[i];
-            if (!gData.mouseOver && !gData.tweening) {
-                gData.tweening = true;
-                gData.resetting = false;
-
-                // this._saveGlyph(i);
-                this.TweenLite.to( gData, 1.0, {
-                    overwrite: 1,
-                    tween: 1.0,
-                    ease: Expo.easeOut,
-                    delay: 1.0 + (i*.01),
-                    onStart: this._startTweenReset,
-                    onStartParams: [ i ],
-                    onComplete: this._finishTweenReset,
-                    onCompleteParams: [ i ]
-                });
-            }
+            this._addTween(i, delay);
+            // delay += options.resetDelayIncrement;
         }
 
         this._updateKillTweens();
-
-        // if (oldGlyph !== this.currentGlyph && oldGlyph !== -1) {
-        //     console.log("LEAVE", oldGlyph)
-        // }
     },
 
     _updateMouseInteractions: function() {
@@ -445,24 +535,25 @@ var TextManager = new Class({
             width = this.camera.viewportWidth,
             height = this.camera.viewportHeight;
 
+        var options = this.options;
+        var mousePush = options.mouseStrength;
+        var mousePushThreshold = options.mouseRadius;
 
-        var mousePush = 5;
-        var mousePushThreshold = 15;
-
-        var explodeThreshold = 30;
-        var strength = 3;
+        var strength = options.spinStrength;
         tmp3.copy( mouse );
         tmp3.sub( lastMouse );
         tmp3.normalize();
         tmp3.scale(mousePush);
 
-        var mouseMoved = mouse.distance(lastMouse) > 2;
+        var mouseMoved = mouse.distance(lastMouse) > options.minMouseMotion;
+
+        // if (options.resetWhileIdle && !mouseMoved)
+        //     return;
 
         var explode = true;
         for (var i=0; i<world.particles.length; i++) {
             var p = world.particles[i];
 
-                
             var pDist = p.position.distance(mouse);
             if ( pDist < mousePushThreshold) {
                 if (mouseMoved) {
@@ -470,28 +561,46 @@ var TextManager = new Class({
                 }
             }
 
-            if (pDist < explodeThreshold) {
+            if (pDist < mousePushThreshold/2) {
                 force.random();
                 // force.z = 0;
 
-                
 
                 var dist = this._normalizedDistanceFromMouse(p);
                 if (dist < 0.5) {
-                    var power = lerp(strength, 0.0, dist);
+                    var power = lerp(strength, 0, dist);
                     force.scale( power );
 
                     force.z = 0;
 
+                    // if (options.rigid) {
+                    //     p.position.add(force);
+                    // }
                     p.velocity.add(force);
-                }
-                
+
+
+                    // for (var j=0; j<p.constraints.length; j++) {
+                    //     p.constraints[j].stiffness = 0.01;
+                    //     p.constraints[j].restingDistance -= lerp(15, 0, dist);
+                    //     // p.constraints[j].restingDistance = Math.max(5, p.constraints[j].restingDistance);
+                    // }
+                        
+                } else if (dist > 20) {
                     
-            } else {
-                // var a = 0.1;
-                // p.position.lerp(p.original, a);
-                // p.velocity.lerp(zero, a);
-                // p.acceleration.lerp(zero, a);
+                }                
+            } else if (options.rigidness > 0) {
+                var a = options.rigidness;
+                p.position.lerp(p.original, a);
+                p.velocity.lerp(zero, a);
+                p.acceleration.lerp(zero, a);
+
+                // if (pDist < mousePushThreshold*4) {
+                //     for (var j=0; j<p.constraints.length; j++) {
+                //         p.constraints[j].stiffness = 0.05;
+                //         // p.constraints[j].restingDistance -= .5;
+                //         // p.constraints[j].restingDistance = Math.max(5, p.constraints[j].restingDistance);
+                //     }
+                // }
             }
         }
 
@@ -602,7 +711,7 @@ var TextManager = new Class({
     },
 
     initWebGL: function(canvas, antialiasing) {        
-        this.webGLRenderer = new WebGLRenderer(canvas, vert, frag, antialiasing, fxaa);
+        this.webGLRenderer = new WebGLRenderer(canvas, vert, frag, antialiasing, vignetteFrag);
         this.webGLRenderer.setup(this.world.particles);
         
         this.resize(canvas.width, canvas.height);
@@ -621,6 +730,8 @@ var TextManager = new Class({
         this.camera.setToOrtho(yDown, width, height);
         this.camera.translate(-this.position.x*zoom, -this.position.y*zoom, this.position.z);
         this.camera.update();
+
+        this.screenLength = Math.sqrt(width*width + height*height);
     },
 
     updateCamera: function() {
@@ -664,9 +775,12 @@ var TextManager = new Class({
         this._savePosition();
     },
 
-    renderCanvas: function(context, fill, noIntersect) {
-        fill = typeof fill === "boolean" ? fill : true;
-        noIntersect = typeof noIntersect === "boolean" ? noIntersect : false;
+    renderCanvas: function(context) {
+        // fill = typeof fill === "boolean" ? fill : true;
+        // noIntersect = typeof noIntersect === "boolean" ? noIntersect : false;
+
+        var fill = this.options.fill;
+        var noIntersect = false;
 
         var style = "rgba("+ ~~(this.color.r*255)+","+ ~~(this.color.g*255) +","+ ~~(this.color.b*255) + "," + this.color.a +")";
         if (fill)
@@ -678,7 +792,7 @@ var TextManager = new Class({
     },
 
     destroy: function() {
-        this.world.points.length = 0;
+        this.world.particles.length = 0;
         this.text = null;
         this.world = null;
         this.webGLRenderer = null;
@@ -686,10 +800,11 @@ var TextManager = new Class({
         this.face = null;
     },
 
-    renderWebGL: function(points) {
+    renderWebGL: function() {
+        var lines = !this.options.fill;
         if (this.webGLRenderer) {
             this.webGLRenderer.render(this.width, this.height, 
-                        this.world.particles, this.camera, this.color, points);
+                        this.world.particles, this.camera, this.color, lines);
         }
     },
 });
@@ -703,24 +818,24 @@ module.exports = TextManager;
 // renderer.draw();
 
 
-},{"../vendor/uni_sans_bold_B.typeface":6,"./Constraint":1,"./WebGLRenderer":3,"./World":4,"./typeface-stripped":5,"cam3d":17,"fs":54,"interpolation":19,"klasse":34,"text3d":"bRhrlU","vecmath":53}],3:[function(_dereq_,module,exports){
+},{"../vendor/uni_sans_bold_B.typeface":6,"./Constraint":1,"./WebGLRenderer":3,"./World":4,"./typeface-stripped":5,"cam3d":17,"fs":65,"interpolation":19,"klasse":44,"text3d":"Bm9NR4","vecmath":64}],3:[function(require,module,exports){
 
-var Class = _dereq_('klasse');
-var WebGLContext = _dereq_('kami').WebGLContext;
+var Class = require('klasse');
+var WebGLContext = require('kami').WebGLContext;
 
-var MeshRenderer = _dereq_('kami-mesh').MeshRenderer;
+var MeshRenderer = require('kami-mesh').MeshRenderer;
 
-var ShaderProgram = _dereq_('kami').ShaderProgram;
-var SpriteBatch = _dereq_('kami').SpriteBatch;
-var FrameBuffer = _dereq_('kami').FrameBuffer;
-var Texture = _dereq_('kami').Texture;
+var ShaderProgram = require('kami').ShaderProgram;
+var SpriteBatch = require('kami').SpriteBatch;
+var FrameBuffer = require('kami').FrameBuffer;
+var Texture = require('kami').Texture;
 
-var Matrix4 = _dereq_('vecmath').Matrix4;
-var OrthographicCamera = _dereq_('cam3d').OrthographicCamera;
-var PerspectiveCamera = _dereq_('cam3d').PerspectiveCamera;
+var Matrix4 = require('vecmath').Matrix4;
+var OrthographicCamera = require('cam3d').OrthographicCamera;
+var PerspectiveCamera = require('cam3d').PerspectiveCamera;
 
-var Vector3 = _dereq_('vecmath').Vector3;
-var Matrix3 = _dereq_('vecmath').Matrix3;
+var Vector3 = require('vecmath').Vector3;
+var Matrix3 = require('vecmath').Matrix3;
 
 var rot = new Matrix3();
 var tmpVec = new Vector3();
@@ -731,7 +846,7 @@ var AA_SIZE = 2048;
 
 var WebGLRenderer = new Class({
 
-    initialize: function(canvas, vert, frag, useAA) {
+    initialize: function(canvas, vert, frag, useAA, vignetteShader) {
         this.context = new WebGLContext(canvas.width, canvas.height, canvas);
 
         this.mesh = null;
@@ -744,8 +859,8 @@ var WebGLRenderer = new Class({
 
 
         if (this.useAA) {
-            // SpriteBatch.DEFAULT_FRAG_SHADER = fxaaFrag;
-            this.batch = new SpriteBatch(this.context);
+            SpriteBatch.DEFAULT_FRAG_SHADER = vignetteShader;
+            this.batch = new SpriteBatch(this.context, 1);
             // this.batch.shader.bind();
             // this.batch.shader.setUniformf("texcoordOffset", 1.0/AA_SIZE, 1.0/AA_SIZE);
 
@@ -760,12 +875,13 @@ var WebGLRenderer = new Class({
     },
 
     setup: function(particles) {
-        if (this.mesh)
-            this.mesh.destroy();
+        //TODO: fix!!
+        // if (this.mesh)
+        //     this.mesh.destroy();
 
         this.mesh = new MeshRenderer(this.context, {
             hasColors: true,
-            maxVertices: particles.length * 4, //4 floats per vertex
+            maxVertices: particles.length * 2 * 4, //4 floats per vertex
             hasNormals: false,
             numTexCoords: 0
         });
@@ -781,31 +897,67 @@ var WebGLRenderer = new Class({
             this.mesh.destroy();
     },
 
-    _renderNormal: function(particles, camera, color, points) {
+    _renderNormal: function(particles, camera, color, lines) {
         var gl = this.context.gl;
         var renderer = this.mesh;
         var shader = this.shader;
 
         renderer.shader = shader;
-        renderer.begin(camera.combined, points ? gl.POINTS : gl.TRIANGLES);
+        renderer.begin(camera.combined, lines ? gl.LINES : gl.TRIANGLES);
         
         var r = color.r,
             g = color.g,
             b = color.b,
             a = color.a;
 
-        for (var i=0; i<particles.length; i++) {
-            var p = particles[i];
-            var pos = p.position;
+        if (lines) {
+            for (var i=0; i<particles.length; i+=3) {
+                var p1 = particles[i];
+                var p2 = particles[i+1];
+                var p3 = particles[i+2];
+                var p4 = (i+3)<particles.length ? particles[i+3] : null;
+                
 
-            renderer.color(r, g, b, a);
-            renderer.vertex( pos.x, pos.y, pos.z );
+                renderer.color(r, g, b, a);
+                renderer.vertex( p1.position.x, p1.position.y, p1.position.z );
+
+                renderer.color(r, g, b, a);
+                renderer.vertex( p2.position.x, p2.position.y, p2.position.z );
+
+                renderer.color(r, g, b, a);
+                renderer.vertex( p3.position.x, p3.position.y, p3.position.z );
+                
+                renderer.color(r, g, b, a);
+                renderer.vertex( p1.position.x, p1.position.y, p1.position.z );
+
+                if (p4 !== null) {
+                    renderer.color(0, 0, 0, 0);
+                    renderer.vertex( p1.position.x, p1.position.y, p1.position.z );
+                    renderer.color(0, 0, 0, 0);
+                    renderer.vertex( p4.position.x, p4.position.y, p4.position.z );
+                }
+                    
+                // renderer.color(0, 0, 0, 0);
+                // renderer.vertex( p2.position.x, p2.position.y, p2.position.z );
+                // renderer.color(0, 0, 0, 0);
+                // renderer.vertex( p3.position.x, p3.position.y, p3.position.z );
+
+            }
+        } else {
+            for (var i=0; i<particles.length; i++) {
+                var p = particles[i];
+                var pos = p.position;
+
+                renderer.color(r, g, b, a);
+                renderer.vertex( pos.x, pos.y, pos.z );
+            }
         }
+            
 
         renderer.end();
     },
 
-    render: function(width, height, particles, camera, color, points) {
+    render: function(width, height, particles, camera, color, lines) {
         var useAA = this.useAA;
         var gl = this.context.gl;
 
@@ -842,7 +994,7 @@ var WebGLRenderer = new Class({
 
             gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT);
-            this._renderNormal(particles, camera, color, points);
+            this._renderNormal(particles, camera, color, lines);
             fbo.end();
 
             var out = AA_SIZE/2;
@@ -856,7 +1008,7 @@ var WebGLRenderer = new Class({
             camera.viewportHeight = h;
             camera.update();
         } else {
-            this._renderNormal(particles, camera, color, points);
+            this._renderNormal(particles, camera, color, lines);
         }
         
         gl.depthMask(true);
@@ -866,12 +1018,12 @@ var WebGLRenderer = new Class({
 
 
 module.exports = WebGLRenderer;
-},{"cam3d":17,"kami":31,"kami-mesh":20,"klasse":34,"vecmath":53}],4:[function(_dereq_,module,exports){
-var Class = _dereq_('klasse');
+},{"cam3d":17,"kami":40,"kami-mesh":20,"klasse":44,"vecmath":64}],4:[function(require,module,exports){
+var Class = require('klasse');
 
-var Vector3 = _dereq_('vecmath').Vector3;
+var Vector3 = require('vecmath').Vector3;
 
-var Constraint = _dereq_('./Constraint');
+var Constraint = require('./Constraint');
 
 var tmp = new Vector3();
 
@@ -892,7 +1044,7 @@ var World = new Class({
 
         this.accuracy = 1;
 
-        this.defaultStiffness = 0.2;
+        this.defaultStiffness = 0.5;
         this.defaultRestingDistance = undefined;
     },
 
@@ -1048,7 +1200,7 @@ var World = new Class({
 });
 
 module.exports = World;
-},{"./Constraint":1,"klasse":34,"vecmath":53}],5:[function(_dereq_,module,exports){
+},{"./Constraint":1,"klasse":44,"vecmath":64}],5:[function(require,module,exports){
 var _typeface_js = {
 
     faces: {},
@@ -1085,16 +1237,16 @@ var _typeface_js = {
 };
 
 module.exports = _typeface_js;
-},{}],6:[function(_dereq_,module,exports){
+},{}],6:[function(require,module,exports){
 module.exports = {"glyphs":{"S":{"x_min":25,"x_max":740.6875,"ha":808,"o":"m 25 173 b 366 -13 108 48 238 -13 b 740 270 545 -13 723 86 b 412 597 750 502 583 565 b 243 706 326 615 244 626 l 243 708 b 393 805 247 776 315 805 b 556 712 456 805 515 776 l 725 825 b 393 998 643 948 520 998 b 34 715 216 998 45 901 b 345 402 31 498 191 426 b 534 284 447 388 538 369 b 179 291 526 147 268 150 l 25 173 "},"/":{"x_min":-45.828125,"x_max":559.71875,"ha":528,"o":"m -45 -8 l 138 -75 l 559 994 l 377 1058 l -45 -8 "},"K":{"x_min":61.109375,"x_max":863.890625,"ha":858,"o":"m 61 983 l 61 0 l 265 0 l 265 327 l 304 365 l 611 0 l 863 0 l 441 501 l 863 983 l 615 983 l 265 573 l 265 983 l 61 983 "},"7":{"x_min":-23.765625,"x_max":672.0625,"ha":685,"o":"m 402 788 l -19 0 l 201 0 l 672 870 l 615 984 l -23 984 l -23 788 l 402 788 "},"d":{"x_min":31.921875,"x_max":611.109375,"ha":701,"o":"m 416 982 l 416 700 b 31 481 259 772 29 680 l 31 232 b 330 -16 45 46 179 -16 b 611 38 420 -16 523 4 l 611 982 l 416 982 m 416 142 b 225 214 350 108 227 128 l 225 490 b 416 553 234 574 354 587 l 416 142 "},",":{"x_min":-8.328125,"x_max":315.28125,"ha":392,"o":"m -8 -169 l 187 -169 l 315 154 l 98 154 l -8 -169 "},"Y":{"x_min":-63.890625,"x_max":825,"ha":806,"o":"m 825 983 l 587 983 l 379 572 l 170 983 l -63 983 l 277 376 l 277 0 l 481 0 l 481 376 l 825 983 "},"E":{"x_min":55.5625,"x_max":722.21875,"ha":794,"o":"m 722 984 l 55 984 l 55 0 l 722 0 l 722 198 l 261 198 l 261 393 l 684 393 l 684 591 l 261 591 l 261 784 l 722 784 l 722 984 "},"y":{"x_min":35.984375,"x_max":608.203125,"ha":701,"o":"m 413 719 l 413 163 b 222 226 351 129 231 143 l 222 719 l 35 719 l 35 223 b 416 9 35 25 244 -48 b 158 -55 416 -125 233 -126 l 62 -154 b 608 26 223 -341 608 -280 l 608 719 l 413 719 "},"\"":{"x_min":36.109375,"x_max":480.5625,"ha":529,"o":"m 36 605 l 205 605 l 233 981 l 36 981 l 36 605 m 283 605 l 454 605 l 480 981 l 283 981 l 283 605 "},"g":{"x_min":26.03125,"x_max":598.25,"ha":696,"o":"m 52 -154 b 598 26 213 -341 598 -280 l 598 675 b 26 494 403 772 26 783 l 26 223 b 406 9 26 24 234 -48 b 148 -52 406 -125 223 -123 l 52 -154 m 403 163 b 212 226 341 128 221 142 l 212 498 b 403 575 214 585 337 608 l 403 163 "},"ƒ":{"x_min":-25.0625,"x_max":626.171875,"ha":704,"o":"m -25 -128 b 324 28 124 -217 295 -141 l 404 458 l 542 458 l 542 617 l 431 617 l 455 747 b 559 807 466 805 505 834 l 626 943 b 487 986 569 973 522 986 b 258 762 334 986 276 869 l 258 764 l 231 617 l 88 617 l 88 458 l 202 458 b 127 68 179 333 151 192 b 19 1 116 0 70 -20 l -25 -128 "},"e":{"x_min":25,"x_max":598.609375,"ha":686,"o":"m 416 419 l 219 419 l 219 483 b 416 484 216 584 416 584 l 416 419 m 440 211 b 219 241 391 130 219 141 l 219 276 l 598 276 l 598 476 b 315 730 598 650 455 730 b 25 476 170 730 25 650 l 25 241 b 315 -13 25 70 170 -13 b 566 122 400 -13 511 19 l 440 211 "},"J":{"x_min":-9.71875,"x_max":731.953125,"ha":847,"o":"m 526 790 l 526 308 b 362 186 526 227 443 186 b 187 351 286 186 206 241 l -9 312 b 358 -13 18 90 194 -13 b 731 308 543 -13 731 94 l 731 983 l 294 983 l 294 790 l 526 790 "},"|":{"x_min":48.609375,"x_max":241.671875,"ha":340,"o":"m 48 988 l 48 -202 l 241 -202 l 241 988 l 48 988 "},"^":{"x_min":-6.9375,"x_max":769.453125,"ha":824,"o":"m -6 549 l 216 549 l 375 749 l 537 549 l 769 549 l 436 964 l 318 964 l -6 549 "},"q":{"x_min":27.75,"x_max":606.9375,"ha":704,"o":"m 606 -263 l 606 681 b 326 735 519 714 416 735 b 27 486 175 735 41 672 l 27 238 b 412 18 25 38 255 -53 l 412 -263 l 606 -263 m 412 158 b 220 228 350 124 230 145 l 220 504 b 412 576 223 590 345 610 l 412 158 "},"b":{"x_min":37.5,"x_max":616.703125,"ha":701,"o":"m 37 982 l 37 38 b 318 -16 125 4 227 -16 b 616 232 469 -16 602 46 l 616 481 b 231 700 619 680 388 772 l 231 982 l 37 982 m 231 553 b 423 490 294 587 413 574 l 423 214 b 231 142 420 128 298 108 l 231 553 "},"D":{"x_min":58.328125,"x_max":794.453125,"ha":876,"o":"m 419 0 b 794 313 613 0 794 93 l 794 663 b 419 983 794 886 613 983 l 58 983 l 58 0 l 419 0 m 262 205 l 262 777 l 419 777 b 588 663 508 777 588 744 l 588 313 b 419 205 588 234 508 205 l 262 205 "},"z":{"x_min":-15.21875,"x_max":548.578125,"ha":596,"o":"m 283 554 l -15 69 l 40 0 l 538 0 l 538 165 l 248 165 l 548 651 l 493 719 l 11 719 l 11 554 l 283 554 "},"w":{"x_min":-31.9375,"x_max":922.21875,"ha":929,"o":"m 450 455 l 469 259 l 529 0 l 705 0 l 922 719 l 729 719 l 655 416 l 629 241 l 620 241 l 605 418 l 516 719 l 376 719 l 284 416 l 269 241 l 261 241 l 236 415 l 158 719 l -31 719 l 191 0 l 366 0 l 423 259 l 440 455 l 450 455 "},"$":{"x_min":17.78125,"x_max":733.40625,"ha":785,"o":"m 313 -97 l 445 -97 l 445 -5 b 733 271 591 21 719 115 b 445 589 741 484 601 554 l 445 796 b 549 712 485 782 520 755 l 717 825 b 445 994 648 929 551 980 l 445 1078 l 313 1078 l 313 993 b 27 715 165 969 37 875 b 313 407 24 509 167 434 l 313 193 b 171 291 256 208 203 240 l 17 173 b 313 -10 91 64 201 1 l 313 -97 m 527 284 b 445 191 524 236 491 205 l 445 380 b 527 284 495 364 530 337 m 235 707 l 235 708 b 313 794 238 753 269 780 l 313 618 b 235 707 269 633 235 657 "},"\\":{"x_min":-84.71875,"x_max":523.609375,"ha":522,"o":"m 100 1058 l -84 993 l 338 -79 l 523 -16 l 100 1058 "},"~":{"x_min":15.40625,"x_max":597.34375,"ha":647,"o":"m 487 514 b 359 479 443 456 408 443 b 209 543 323 507 273 543 b 15 409 126 543 64 480 l 136 307 b 262 331 184 370 220 367 b 394 276 297 301 343 276 b 597 423 486 276 551 342 l 487 514 "},"-":{"x_min":23.609375,"x_max":433.328125,"ha":489,"o":"m 23 308 l 433 308 l 433 504 l 23 504 l 23 308 "},"Q":{"x_min":40.625,"x_max":862.84375,"ha":939,"o":"m 743 -43 l 862 72 l 797 141 b 846 307 828 187 846 241 l 846 676 b 40 676 846 1112 40 1115 l 40 307 b 672 32 40 0 436 -90 l 743 -43 m 243 676 b 642 676 243 841 643 845 l 642 308 l 575 379 l 447 275 l 522 193 b 243 307 404 163 242 201 l 243 676 "},"M":{"x_min":61.265625,"x_max":969.59375,"ha":1088,"o":"m 790 581 l 765 391 l 765 0 l 969 0 l 969 983 l 755 983 l 514 418 l 275 983 l 61 983 l 61 0 l 265 0 l 265 390 l 243 580 l 257 580 l 304 445 l 440 129 l 593 129 l 727 444 l 775 581 l 790 581 "},"C":{"x_min":19.4375,"x_max":755.5625,"ha":811,"o":"m 579 294 b 222 316 495 133 222 165 l 222 667 b 583 693 222 819 498 854 l 747 782 b 405 993 680 926 536 993 b 19 667 211 993 19 882 l 19 316 b 401 -9 19 100 211 -9 b 755 196 531 -9 670 58 l 579 294 "},"[":{"x_min":37.5,"x_max":338.890625,"ha":372,"o":"m 338 990 l 37 990 l 37 -151 l 338 -151 l 338 36 l 234 36 l 234 801 l 338 801 l 338 990 "},"L":{"x_min":55.5625,"x_max":684.71875,"ha":721,"o":"m 684 205 l 259 205 l 259 983 l 55 983 l 55 0 l 684 0 l 684 205 "},"!":{"x_min":56.9375,"x_max":295.828125,"ha":403,"o":"m 273 986 l 77 986 l 77 265 l 273 265 l 273 986 m 56 104 b 175 -15 56 37 108 -15 b 295 104 243 -15 295 37 b 175 225 295 170 243 225 b 56 104 108 225 56 170 "}," ":{"x_min":0,"x_max":0,"ha":328},"{":{"x_min":16.328125,"x_max":382.890625,"ha":404,"o":"m 382 991 l 289 991 b 96 788 142 991 96 912 l 96 622 b 16 512 96 566 78 512 l 16 327 b 96 218 78 327 96 275 l 96 51 b 277 -150 96 -72 134 -150 l 382 -150 l 382 33 l 288 33 b 294 54 291 34 294 41 l 294 241 b 196 419 294 318 271 388 b 294 598 253 445 294 526 l 294 781 b 294 806 294 797 294 806 l 382 806 l 382 991 "},"X":{"x_min":-48.65625,"x_max":831.90625,"ha":826,"o":"m 831 983 l 583 983 l 384 633 l 202 983 l -45 983 l 241 490 l -48 0 l 202 0 l 384 347 l 581 0 l 831 0 b 520 488 765 100 583 391 l 831 983 "},"P":{"x_min":59.71875,"x_max":798.4375,"ha":856,"o":"m 262 304 l 448 304 b 447 983 912 304 918 981 l 59 983 l 59 0 l 262 0 l 262 304 m 447 495 l 262 495 l 262 777 l 447 777 b 447 495 648 777 645 495 "},"%":{"x_min":18.0625,"x_max":962.46875,"ha":1038,"o":"m 430 745 b 223 995 430 905 355 995 b 18 748 104 995 18 900 b 223 495 18 583 93 495 b 430 745 341 495 430 590 m 888 934 l 736 1034 l 56 -9 l 208 -104 l 888 934 m 286 745 b 220 641 286 675 262 641 b 154 747 181 641 154 670 b 220 851 154 819 181 851 b 286 745 261 851 286 819 m 962 244 b 755 494 962 404 887 494 b 549 247 636 494 549 398 b 755 -5 549 81 624 -5 b 962 244 873 -5 962 88 m 818 244 b 752 140 818 173 794 140 b 686 245 713 140 686 169 b 752 350 686 318 713 350 b 818 244 793 350 818 318 "},"#":{"x_min":8.796875,"x_max":950.6875,"ha":988,"o":"m 724 506 l 897 506 l 950 694 l 782 694 l 856 936 l 661 936 l 590 694 l 490 694 l 561 936 l 370 936 b 299 694 349 863 322 769 l 94 694 l 54 506 l 243 506 b 222 440 233 472 231 462 l 44 440 l 8 255 l 168 255 l 93 0 l 285 0 l 358 255 l 458 255 l 386 0 l 577 0 b 650 255 588 40 610 118 l 857 255 l 896 440 l 706 440 l 724 506 m 553 519 l 528 427 l 395 427 l 418 519 l 553 519 "},"_":{"x_min":-16.671875,"x_max":681.953125,"ha":756,"o":"m -16 -181 l 681 -181 l 681 11 l -16 11 l -16 -181 "},"+":{"x_min":36.109375,"x_max":747.21875,"ha":838,"o":"m 36 355 l 300 355 l 300 97 l 494 97 l 494 355 l 747 355 l 747 551 l 494 551 l 494 806 l 300 806 l 300 551 l 36 551 l 36 355 "},")":{"x_min":-48.609375,"x_max":310.234375,"ha":393,"o":"m -48 1006 b -45 -65 191 701 190 274 l 98 -164 b 91 1101 381 234 381 774 l -48 1006 "},"'":{"x_min":33.328125,"x_max":227.78125,"ha":299,"o":"m 33 605 l 208 605 l 227 981 l 33 981 l 33 605 "},"}":{"x_min":-9.3125,"x_max":344.859375,"ha":393,"o":"m -9 806 l 62 806 b 67 781 67 806 67 797 l 67 598 b 167 420 65 526 111 455 b 67 241 94 390 65 315 l 67 54 b 60 33 67 40 65 33 l -9 33 l -9 -150 l 61 -150 b 262 51 226 -150 262 -72 l 262 218 b 344 327 262 275 279 327 l 344 512 b 262 622 279 512 262 566 l 262 788 b 64 991 262 912 243 991 l -9 991 l -9 806 "},"a":{"x_min":24.75,"x_max":593.09375,"ha":701,"o":"m 288 466 b 322 -16 -66 466 -70 -16 b 593 35 409 -16 508 3 l 593 481 b 50 605 593 757 198 811 l 144 518 b 405 444 220 603 405 612 b 288 466 370 462 326 466 m 400 141 b 319 131 373 134 347 131 b 312 317 172 131 162 313 b 400 305 345 319 379 313 l 400 141 "},"T":{"x_min":-11.109375,"x_max":758.328125,"ha":783,"o":"m -11 984 l -11 779 l 270 779 l 270 0 l 476 0 l 476 779 l 758 779 l 758 984 l -11 984 "},"=":{"x_min":47.21875,"x_max":640.28125,"ha":738,"o":"m 47 437 l 640 437 l 640 627 l 47 627 l 47 437 m 47 183 l 640 183 l 640 372 l 47 372 l 47 183 "},"N":{"x_min":59.71875,"x_max":830.5625,"ha":947,"o":"m 641 269 l 572 447 l 261 983 l 59 983 l 59 0 l 265 0 l 265 479 l 238 647 l 252 650 l 312 516 l 612 0 l 830 0 l 830 983 l 626 983 l 626 480 b 655 272 627 459 644 336 l 641 269 "},"2":{"x_min":-13.671875,"x_max":675.9375,"ha":749,"o":"m 161 688 b 464 759 234 819 397 850 b 414 575 500 712 471 634 l -13 106 l 37 1 l 673 1 l 673 196 l 439 195 b 298 180 429 194 298 180 l 296 188 l 553 433 b 347 997 772 656 694 983 b 5 794 212 1001 83 926 l 161 688 "},"j":{"x_min":-55.5625,"x_max":252.78125,"ha":332,"o":"m 20 883 b 136 767 20 819 72 767 b 252 883 201 767 252 819 b 136 999 252 949 201 999 b 20 883 72 999 20 949 m -55 -105 b 41 -12 31 -114 41 -52 l 41 720 l 234 720 l 234 -12 b -55 -254 234 -169 147 -294 l -55 -105 "},"Z":{"x_min":-21.03125,"x_max":755.296875,"ha":776,"o":"m 469 794 l -21 93 l 27 0 l 735 0 l 735 183 l 265 183 l 755 890 l 698 983 l 5 983 l 5 794 l 469 794 "},"u":{"x_min":38.890625,"x_max":613.890625,"ha":710,"o":"m 613 720 l 422 720 l 422 154 b 231 251 334 124 236 164 l 231 720 l 38 720 l 38 253 b 613 42 38 -71 404 -34 l 613 720 "},"1":{"x_min":-56.9375,"x_max":355.5625,"ha":451,"o":"m 194 986 l -56 720 l 70 612 l 163 693 l 163 0 l 355 0 l 355 986 l 194 986 "},"k":{"x_min":47.21875,"x_max":675,"ha":664,"o":"m 47 981 l 47 0 l 240 0 l 240 251 l 252 262 l 451 0 l 675 0 b 387 372 587 116 477 252 l 673 719 l 448 719 l 240 447 l 240 981 l 47 981 "},"€":{"x_min":-26.390625,"x_max":798.609375,"ha":824,"o":"m 1 647 l -26 509 l 62 509 l 62 456 l 1 456 l -26 320 l 62 320 l 62 317 b 444 -9 62 100 254 -9 b 798 196 575 -9 713 58 l 622 295 b 265 317 538 133 265 165 l 265 320 l 502 320 l 529 456 l 265 456 l 265 509 l 501 509 l 529 647 l 265 647 l 265 667 b 626 693 265 819 541 854 l 790 782 b 448 993 723 926 579 993 b 62 667 254 993 62 882 l 62 647 l 1 647 "},"<":{"x_min":40.28125,"x_max":531.9375,"ha":608,"o":"m 531 788 l 40 473 l 40 345 l 531 34 l 531 259 l 258 409 l 531 565 l 531 788 "},"t":{"x_min":37.484375,"x_max":377.78125,"ha":424,"o":"m 377 150 b 229 254 284 132 229 172 l 229 526 l 356 526 l 356 720 l 229 720 l 229 983 l 37 983 l 37 253 b 377 10 36 29 186 -53 l 377 150 "},"W":{"x_min":-40.015625,"x_max":1229.4375,"ha":1283,"o":"m 559 377 b 586 497 561 376 586 497 l 597 497 l 619 379 l 746 0 l 946 0 l 1229 983 l 1019 983 l 876 468 l 850 230 l 837 230 l 797 468 l 678 847 l 512 847 b 387 470 457 670 441 650 l 354 240 l 341 240 l 311 469 l 171 983 l -40 983 l 244 0 l 444 0 l 559 377 "},"v":{"x_min":-51.390625,"x_max":643.0625,"ha":649,"o":"m 288 170 l 259 356 l 154 719 l -51 719 l 204 0 l 386 0 l 643 719 l 436 719 l 329 356 l 302 170 l 288 170 "},">":{"x_min":47.21875,"x_max":538.890625,"ha":615,"o":"m 47 565 l 320 409 l 47 259 l 47 34 l 538 345 l 538 473 l 47 788 l 47 565 "},"s":{"x_min":-7.84375,"x_max":509.875,"ha":551,"o":"m -7 108 b 250 -13 60 18 150 -13 b 509 222 384 -13 509 65 b 302 433 509 358 394 410 b 207 507 272 439 202 464 b 388 521 215 601 345 562 l 484 653 b 255 728 411 712 320 729 b 245 276 -45 724 -94 335 b 315 185 311 267 333 226 b 83 233 290 126 168 153 l -7 108 "},"B":{"x_min":59.734375,"x_max":799.53125,"ha":861,"o":"m 263 598 l 263 784 l 448 784 b 448 598 604 784 587 598 l 263 598 m 448 423 b 448 198 643 423 640 198 l 263 198 l 263 423 l 448 423 m 757 695 b 448 984 757 886 618 984 l 59 984 l 59 0 l 455 0 b 795 250 682 0 777 118 b 664 523 809 348 786 463 b 757 695 730 561 757 640 "},"?":{"x_min":-11.109375,"x_max":587.90625,"ha":656,"o":"m 113 717 b 231 787 145 762 188 783 b 236 522 437 805 430 522 b 150 531 222 522 188 522 l 162 244 l 330 244 l 344 401 b 266 970 712 455 644 970 b -11 823 170 970 69 928 l 113 717 m 143 95 b 252 -14 143 34 191 -14 b 362 95 313 -14 362 34 b 252 205 362 159 313 205 b 143 95 191 205 143 159 "},"H":{"x_min":70.828125,"x_max":841.671875,"ha":953,"o":"m 637 0 l 841 0 l 841 983 l 637 983 l 637 593 l 275 593 l 275 983 l 70 983 l 70 0 l 275 0 l 275 388 l 637 388 l 637 0 "},"c":{"x_min":19.4375,"x_max":588.890625,"ha":628,"o":"m 419 243 b 212 247 379 126 212 149 l 212 473 b 415 482 212 569 383 589 l 580 533 b 308 728 543 680 411 728 b 19 472 165 728 19 643 l 19 246 b 308 -7 19 75 165 -7 b 588 188 411 -7 538 42 l 419 243 "},"&":{"x_min":19,"x_max":900.828125,"ha":871,"o":"m 489 516 b 634 751 568 564 634 631 b 380 991 634 895 511 991 b 105 737 238 991 105 899 b 171 558 105 670 135 609 b 19 299 91 502 19 427 b 337 -5 19 112 159 -5 b 593 105 450 -5 524 31 l 663 20 l 900 20 l 707 256 l 806 371 l 682 491 l 598 389 l 489 516 m 455 239 b 212 299 363 133 212 180 b 300 414 212 348 255 384 l 455 239 m 374 816 b 443 748 414 816 443 788 b 350 633 443 702 399 658 b 298 741 321 667 298 709 b 374 816 298 784 331 816 "},"I":{"x_min":43.0625,"x_max":247.21875,"ha":364,"o":"m 43 0 l 247 0 l 247 983 l 43 983 l 43 0 "},"G":{"x_min":28.25,"x_max":797.703125,"ha":910,"o":"m 757 789 b 411 997 682 943 544 997 b 28 674 219 997 28 889 l 28 317 b 797 317 28 -123 797 -120 l 797 561 l 374 561 l 374 363 l 597 363 l 597 317 b 231 317 597 143 231 142 l 231 674 b 592 701 231 836 522 864 l 757 789 "},"(":{"x_min":32.796875,"x_max":391.671875,"ha":417,"o":"m 251 1101 b 244 -164 -38 774 -38 234 l 388 -65 b 391 1006 152 274 151 701 l 251 1101 "},"`":{"x_min":-91.671875,"x_max":323.609375,"ha":357,"o":"m 166 979 l -91 979 l 109 727 l 323 727 l 166 979 "},"U":{"x_min":61.109375,"x_max":833.328125,"ha":943,"o":"m 61 983 l 61 322 b 833 322 61 -127 831 -126 l 833 983 l 627 983 l 627 322 b 266 322 627 138 266 137 l 266 983 l 61 983 "},"◊":{"x_min":-13.984375,"x_max":694.53125,"ha":738,"o":"m 694 470 l 412 975 l 272 975 l -13 468 l 263 -36 l 408 -36 l 694 470 m 482 469 l 340 204 b 195 472 284 306 249 375 b 338 745 245 568 290 651 l 482 469 "},"F":{"x_min":55.5625,"x_max":720.828125,"ha":765,"o":"m 720 983 l 55 983 l 55 0 l 261 0 l 261 366 l 663 366 l 663 568 l 261 568 l 261 784 l 720 784 l 720 983 "},"r":{"x_min":34.71875,"x_max":418.0625,"ha":457,"o":"m 172 698 b 34 474 94 658 34 578 l 34 0 l 227 0 l 227 471 b 418 560 236 553 336 582 l 418 717 b 316 730 375 727 344 730 b 248 723 295 730 265 728 l 247 723 b 172 698 220 717 193 707 "},":":{"x_min":29.171875,"x_max":268.0625,"ha":338,"o":"m 29 561 b 148 440 29 494 81 440 b 268 561 215 440 268 494 b 148 679 268 627 215 679 b 29 561 81 679 29 627 m 29 129 b 148 9 29 62 81 9 b 268 129 215 9 268 62 b 148 248 268 198 215 248 b 29 129 81 248 29 198 "},"x":{"x_min":-45.296875,"x_max":657.515625,"ha":657,"o":"m 428 719 b 332 555 383 645 351 586 l 307 487 l 299 487 l 272 555 l 172 719 l -45 719 b 188 359 117 481 147 420 l -45 0 l 172 0 b 265 147 217 68 242 109 l 297 223 l 307 223 l 335 150 l 428 0 l 657 0 b 415 361 589 95 488 258 l 654 719 l 428 719 "},"*":{"x_min":-1.234375,"x_max":566.515625,"ha":610,"o":"m 373 984 l 193 984 l 207 820 l 48 886 l -1 711 l 155 676 l 47 547 l 195 440 l 281 590 l 373 440 l 516 548 l 405 677 l 566 708 l 515 883 l 356 822 l 373 984 "},"V":{"x_min":-56.9375,"x_max":851.390625,"ha":851,"o":"m 387 236 l 347 438 l 161 984 l -56 984 l 298 1 l 495 1 l 851 984 l 633 984 l 440 438 l 402 236 l 387 236 "},"h":{"x_min":45.828125,"x_max":620.828125,"ha":733,"o":"m 45 983 l 45 0 l 238 0 l 238 526 b 429 463 298 561 429 554 l 429 0 l 620 0 l 620 462 b 238 698 620 681 406 765 l 238 983 l 45 983 "},"0":{"x_min":41.671875,"x_max":752.78125,"ha":853,"o":"m 237 286 l 237 695 b 556 695 248 841 545 841 l 556 286 b 237 286 545 143 248 143 m 397 -11 b 752 286 565 -11 752 80 l 752 695 b 397 994 752 902 565 994 b 41 695 230 994 41 902 l 41 286 b 397 -11 41 80 230 -11 "},".":{"x_min":62.5,"x_max":300,"ha":379,"o":"m 62 112 b 180 -8 62 44 113 -8 b 300 112 247 -8 300 44 b 180 231 300 179 247 231 b 62 112 113 231 62 179 "},"@":{"x_min":17.84375,"x_max":1004.359375,"ha":1064,"o":"m 721 315 l 795 719 l 686 745 l 656 710 b 319 238 376 957 89 447 b 578 208 386 177 500 151 b 868 243 665 140 801 183 b 961 759 1004 363 1043 599 b 676 976 907 863 806 944 b 19 477 289 1077 37 773 b 624 12 -4 111 311 -86 l 592 143 b 650 841 -20 -34 77 990 b 837 683 739 817 807 762 b 721 315 891 545 855 388 m 624 560 l 581 355 b 428 349 547 315 468 303 b 428 565 384 402 388 505 b 624 560 477 637 570 656 "},"f":{"x_min":30.5625,"x_max":359.71875,"ha":393,"o":"m 359 986 b 30 731 176 998 30 904 l 30 0 l 223 0 l 223 423 l 351 423 l 351 618 l 223 618 l 223 731 b 359 797 223 772 273 797 l 359 986 "},";":{"x_min":-13.890625,"x_max":276.390625,"ha":349,"o":"m -13 -131 l 159 -131 l 276 190 l 63 190 l -13 -131 m 34 544 b 155 423 34 476 84 423 b 272 544 223 423 272 476 b 155 662 272 611 223 662 b 34 544 84 662 34 611 "},"i":{"x_min":30.5625,"x_max":261.109375,"ha":351,"o":"m 30 895 b 144 779 30 830 80 779 b 261 895 213 779 261 830 b 144 1011 261 961 213 1011 b 30 895 80 1011 30 961 m 244 720 l 244 0 l 51 0 l 51 720 l 244 720 "},"6":{"x_min":33.328125,"x_max":755.5625,"ha":847,"o":"m 734 791 b 397 991 654 935 530 991 b 33 692 213 992 33 892 l 33 289 b 397 -8 36 89 213 -10 b 755 289 580 -8 755 91 l 755 342 b 230 555 755 606 397 721 l 230 691 b 562 717 230 820 491 866 l 734 791 m 559 291 b 230 291 559 149 230 151 l 230 341 b 559 341 230 481 559 483 l 559 291 "},"A":{"x_min":-19.0625,"x_max":873.953125,"ha":886,"o":"m -19 0 l 198 0 b 280 225 230 87 250 141 l 573 225 l 660 0 l 873 0 l 521 983 l 325 983 l -19 0 m 430 766 l 458 626 l 521 412 l 332 412 l 387 625 l 415 766 l 430 766 "},"n":{"x_min":47.21875,"x_max":620.828125,"ha":718,"o":"m 47 0 l 240 0 l 240 555 b 429 479 309 594 429 578 l 429 0 l 620 0 l 620 480 b 306 743 620 669 469 743 b 47 680 219 743 126 719 l 47 0 "},"O":{"x_min":37.5,"x_max":843.0625,"ha":947,"o":"m 37 676 l 37 306 b 843 306 37 -130 843 -129 l 843 676 b 37 676 843 1112 37 1115 m 240 676 b 638 676 240 841 640 845 l 638 306 b 240 306 638 143 238 141 l 240 676 "},"3":{"x_min":-5.640625,"x_max":711.359375,"ha":782,"o":"m 151 712 b 342 794 209 784 287 794 b 466 698 406 794 466 758 b 363 598 466 640 420 598 l 226 598 l 226 425 l 363 425 b 340 188 561 413 558 188 b 145 306 270 188 191 230 l -5 195 b 336 -12 79 37 206 0 b 573 526 663 -44 858 327 b 645 809 680 612 687 723 b 30 819 523 1065 166 1031 l 151 712 "},"]":{"x_min":-33.328125,"x_max":266.671875,"ha":367,"o":"m -33 -150 l 266 -150 l 266 991 l -33 991 l -33 806 l 68 806 l 68 33 l -33 33 l -33 -150 "},"m":{"x_min":48.609375,"x_max":952.78125,"ha":1053,"o":"m 48 0 l 237 0 l 237 537 b 405 497 283 587 405 565 l 405 0 l 590 0 l 590 494 b 761 493 590 576 761 579 l 761 0 l 952 0 l 952 489 b 684 735 952 653 816 735 b 498 644 616 735 544 707 b 305 743 459 718 379 742 b 48 654 211 744 111 708 l 48 0 "},"9":{"x_min":27.6875,"x_max":749.90625,"ha":840,"o":"m 48 191 b 386 -8 129 47 252 -8 b 749 290 569 -9 749 90 l 749 693 b 386 991 747 893 569 993 b 27 693 202 991 27 891 l 27 640 b 552 427 27 376 381 263 l 552 291 b 220 265 552 162 291 116 l 48 191 m 223 691 b 552 691 223 833 552 832 l 552 641 b 223 641 552 501 223 500 l 223 691 "},"l":{"x_min":36.109375,"x_max":344.4375,"ha":375,"o":"m 344 168 b 229 266 265 168 229 212 l 229 983 l 36 983 l 36 266 b 344 2 36 109 133 -29 l 344 168 "},"8":{"x_min":14.3125,"x_max":747.125,"ha":818,"o":"m 369 176 b 208 300 296 176 208 219 b 369 429 208 394 284 429 l 390 429 b 551 300 475 429 551 394 b 390 176 551 219 463 176 l 369 176 m 390 -8 b 747 309 588 -8 742 105 b 617 527 747 391 713 480 b 708 687 680 565 708 636 b 390 962 708 881 551 962 l 369 962 b 75 805 246 962 128 909 b 139 523 36 729 36 588 b 14 309 46 462 14 376 b 369 -8 17 105 169 -8 l 390 -8 m 391 800 b 520 697 457 800 520 762 b 373 594 520 623 440 594 b 239 697 309 594 239 623 b 369 800 239 762 303 800 l 391 800 "},"p":{"x_min":31.9375,"x_max":611.140625,"ha":707,"o":"m 226 -263 l 226 18 b 611 238 383 -53 613 38 l 611 486 b 312 735 597 672 463 735 b 31 681 222 735 119 714 l 31 -263 l 226 -263 m 226 576 b 418 504 293 610 415 590 l 418 228 b 226 158 408 145 288 124 l 226 576 "},"4":{"x_min":-8.375,"x_max":708.46875,"ha":767,"o":"m 641 983 l 466 983 l -8 356 l 84 219 l 445 219 l 445 1 l 641 1 l 641 219 l 708 219 l 708 398 l 641 398 l 641 983 m 476 729 b 454 591 472 702 454 591 l 450 384 l 229 384 l 425 654 l 468 730 l 476 729 "},"R":{"x_min":60.046875,"x_max":868.390625,"ha":867,"o":"m 575 373 b 798 669 717 401 798 488 b 447 983 793 893 644 983 l 60 983 l 60 0 l 265 0 l 265 359 l 337 359 l 617 0 l 868 0 l 575 373 m 265 545 l 265 777 l 447 777 b 594 668 533 780 594 751 b 447 545 594 581 537 545 l 265 545 "},"o":{"x_min":29.171875,"x_max":605.5625,"ha":694,"o":"m 318 548 b 412 477 362 548 412 523 l 412 240 b 318 162 412 194 362 162 b 222 240 272 162 222 194 l 222 477 b 318 548 222 523 272 548 m 29 477 l 29 244 b 318 -11 29 70 173 -9 b 605 244 461 -9 605 70 l 605 477 b 318 734 605 648 461 733 b 29 477 173 733 29 648 "},"5":{"x_min":37.5,"x_max":727.984375,"ha":817,"o":"m 37 191 b 356 -8 109 47 236 -2 b 554 643 751 -26 854 495 b 234 655 472 683 348 702 l 234 790 l 659 790 l 659 983 l 45 983 l 45 431 l 159 434 b 365 498 252 486 293 500 b 359 188 580 495 577 188 b 187 291 300 188 230 223 l 37 191 "}},"cssFontWeight":"normal","ascender":1050,"underlinePosition":-75,"cssFontStyle":"normal","boundingBox":{"yMin":-263.359375,"xMin":-91.671875,"yMax":1101.171875,"xMax":1229.4375},"resolution":1000,"original_font_information":{"postscript_name":"Uni-Sans-Bold","version_string":"Version 001.001","vendor_url":"","full_font_name":"Uni-Sans-Bold","font_family_name":"Uni Sans Bold","copyright":"Copyright (c) 2009 by © 2009 Designed by Svetoslav Simov © Fontfabric, Inc. All rights reserved.","description":"Copyright (c) 2002 by © 2009 Designed by Svetoslav Simov © Fontfabric, Inc. All rights reserved.","trademark":"Uni Sans Bold is a trademark of © 2009 Designed by Svetoslav Simov © Fontfabric, Inc.","designer":"Svetoslav Simov","designer_url":"http://fontfabric.com/","unique_font_identifier":"2009DesignedbySvetoslavSimovFontfabric,Inc: Uni Sans Bold: 2009","license_url":"","license_description":"","manufacturer_name":"© 2009 Designed by Svetoslav Simov © Fontfabric, Inc","font_sub_family_name":"Regular"},"descender":-339,"familyName":"Uni Sans Bold","lineHeight":1667,"underlineThickness":50};
-},{}],7:[function(_dereq_,module,exports){
-var Class = _dereq_('klasse');
+},{}],7:[function(require,module,exports){
+var Class = require('klasse');
 
-var Vector3 = _dereq_('vecmath').Vector3;
-var Matrix4 = _dereq_('vecmath').Matrix4;
+var Vector3 = require('vecmath').Vector3;
+var Matrix4 = require('vecmath').Matrix4;
 
-var triangulateShapes = _dereq_('./triangulate');
-var util = _dereq_('./util');
+var triangulateShapes = require('./triangulate');
+var util = require('./util');
 
 var tmp = new Vector3();
 
@@ -1121,7 +1273,7 @@ var Glyph = new Class({
         size = typeof size === "number" ? size : Glyph.DEFAULT_SIZE;
         scale = typeof scale === "number" ? scale : 1.0;
 
-
+        console.log(steps);
         //Try to get our shape...
         var shapes = util.getShapeList(face, size, chr, steps);
 
@@ -1288,17 +1440,17 @@ Glyph.DEFAULT_CHARACTER = '?';
 Glyph.SAVE_CONTOUR = false;
 
 module.exports = Glyph;
-},{"./triangulate":11,"./util":13,"klasse":34,"vecmath":53}],8:[function(_dereq_,module,exports){
-var Class = _dereq_('klasse');
+},{"./triangulate":11,"./util":13,"klasse":44,"vecmath":64}],8:[function(require,module,exports){
+var Class = require('klasse');
 
-var Vector2 = _dereq_('vecmath').Vector2;
-var Vector3 = _dereq_('vecmath').Vector3;
-var Matrix4 = _dereq_('vecmath').Matrix4;
+var Vector2 = require('vecmath').Vector2;
+var Vector3 = require('vecmath').Vector3;
+var Matrix4 = require('vecmath').Matrix4;
 
-var triangulateShapes = _dereq_('./triangulate');
-var util = _dereq_('./util');
+var triangulateShapes = require('./triangulate');
+var util = require('./util');
 
-var Glyph = _dereq_('./Glyph');
+var Glyph = require('./Glyph');
 var tmp = new Vector3();
 var tmpMat = new Matrix4();
 
@@ -1474,17 +1626,17 @@ Text3D.ALIGN = {
 };
 
 module.exports = Text3D;
-},{"./Glyph":7,"./triangulate":11,"./util":13,"klasse":34,"vecmath":53}],"bRhrlU":[function(_dereq_,module,exports){
+},{"./Glyph":7,"./triangulate":11,"./util":13,"klasse":44,"vecmath":64}],"Bm9NR4":[function(require,module,exports){
 module.exports = {
-    triangulate: _dereq_('./triangulate'),
-    util: _dereq_('./util'),
-    Glyph: _dereq_('./Glyph'),
-    Text3D: _dereq_('./Text3D')
+    triangulate: require('./triangulate'),
+    util: require('./util'),
+    Glyph: require('./Glyph'),
+    Text3D: require('./Text3D')
 };
-},{"./Glyph":7,"./Text3D":8,"./triangulate":11,"./util":13}],"text3d":[function(_dereq_,module,exports){
-module.exports=_dereq_('bRhrlU');
-},{}],11:[function(_dereq_,module,exports){
-var poly2tri = _dereq_('poly2tri');
+},{"./Glyph":7,"./Text3D":8,"./triangulate":11,"./util":13}],"text3d":[function(require,module,exports){
+module.exports=require('Bm9NR4');
+},{}],11:[function(require,module,exports){
+var poly2tri = require('poly2tri');
 
 function getWindingNumber(point, points_list)
 {
@@ -1579,6 +1731,38 @@ function asPointSet(points) {
     return contour;
 }
 
+
+function addSteinerPoints(set, sweep) {
+    var points = [];
+
+    for (var i=0; i<10; i++) {
+        // var p = set[i];
+        //for each point, add 4 more around it
+
+        // var off = +0.5;
+        // points.push( new poly2tri.Point( p.x + off, p.y ) );
+        // sweep.addPoint( new poly2tri.Point( p.x + off/2, p.y + off ) );
+        // points.push( new poly2tri.Point( p.x , p.y + off ) );
+        // sweep.addPoint( new poly2tri.Point( p.x , p.y ) );
+
+        // if (Math.random() > 0.5)
+        // sweep.addPoint( new poly2tri.Point( 10*(Math.random()*2-1)+p.x, 10*(Math.random()*2-1)+p.y ) );
+    }
+    // points.push(set);
+
+    // points = asPointSet(points);
+    // for (var i=0; i<0 && i<points.length; i++) {
+    //     sweep.addPoint(points[i]);
+    // }
+
+    // var p = set[0];
+    // console.log("POINT");
+    // sweep.addPoint(new poly2tri.Point(set[0].x+.5, set[0].y+.5));
+    // sweep.addPoint(new poly2tri.Point(set[1].x+.5, set[1].y+.5));
+    // sweep.addPoint(new poly2tri.Point(set[2].x+.5, set[2].y+.5));
+    // sweep.addPoint( new poly2tri.Point(1*(Math.random()*2-1)+p.x, 1*(Math.random()*2-1)+p.y)) ;
+}
+
 /**
  * Triangulates a list of Shape objects. 
  */
@@ -1623,6 +1807,8 @@ module.exports = function (shapes) {
                     //no hole, so it must be a new shape.
                     //add our last shape
                     
+                    addSteinerPoints(set, sweep);
+
                     sweep.triangulate();
                     allTris = allTris.concat(sweep.getTriangles());
 
@@ -1643,6 +1829,8 @@ module.exports = function (shapes) {
     //if the sweep is still setup, then triangulate it
     if (sweep !== null) {
         try {
+            addSteinerPoints(set, sweep);
+
             sweep.triangulate();
             allTris = allTris.concat(sweep.getTriangles());
         } catch (e) {
@@ -1652,12 +1840,12 @@ module.exports = function (shapes) {
     }
     return allTris;
 }
-},{"poly2tri":39}],12:[function(_dereq_,module,exports){
-module.exports=_dereq_(5)
-},{}],13:[function(_dereq_,module,exports){
-var Vector2 = _dereq_('vecmath').Vector2;
-var Shape = _dereq_('shape2d');
-var _typeface_js = _dereq_('./typeface-stripped.js');
+},{"poly2tri":49}],12:[function(require,module,exports){
+module.exports=require(5)
+},{}],13:[function(require,module,exports){
+var Vector2 = require('vecmath').Vector2;
+var Shape = require('shape2d');
+var _typeface_js = require('./typeface-stripped.js');
 
 var style = {
     fontSize: 12,
@@ -1835,15 +2023,15 @@ function getShapeList(face, size, chr, steps) {
 
 
 module.exports.getShapeList = getShapeList;
-},{"./typeface-stripped.js":12,"shape2d":45,"vecmath":53}],14:[function(_dereq_,module,exports){
-var Class = _dereq_('klasse');
+},{"./typeface-stripped.js":12,"shape2d":55,"vecmath":64}],14:[function(require,module,exports){
+var Class = require('klasse');
 
-var util = _dereq_('./vecutil');
+var util = require('./vecutil');
 
-var Vector2 = _dereq_('vecmath').Vector2;
-var Vector3 = _dereq_('vecmath').Vector3;
-var Vector4 = _dereq_('vecmath').Vector4;
-var Matrix4 = _dereq_('vecmath').Matrix4;
+var Vector2 = require('vecmath').Vector2;
+var Vector3 = require('vecmath').Vector3;
+var Vector4 = require('vecmath').Vector4;
+var Matrix4 = require('vecmath').Matrix4;
 
 var tmpVec3 = new Vector3();
 var tmpVec4 = new Vector4();
@@ -2003,14 +2191,14 @@ module.exports = Camera;
 
 
 
-},{"./vecutil":18,"klasse":34,"vecmath":53}],15:[function(_dereq_,module,exports){
-var Class = _dereq_('klasse');
+},{"./vecutil":18,"klasse":44,"vecmath":64}],15:[function(require,module,exports){
+var Class = require('klasse');
 
-var Vector3 = _dereq_('vecmath').Vector3;
-var Vector4 = _dereq_('vecmath').Vector4;
-var Matrix4 = _dereq_('vecmath').Matrix4;
+var Vector3 = require('vecmath').Vector3;
+var Vector4 = require('vecmath').Vector4;
+var Matrix4 = require('vecmath').Matrix4;
 
-var Camera = _dereq_('./Camera');
+var Camera = require('./Camera');
 
 var tmpVec3 = new Vector3();
 
@@ -2070,13 +2258,13 @@ var OrthographicCamera = new Class({
 });
 
 module.exports = OrthographicCamera;
-},{"./Camera":14,"klasse":34,"vecmath":53}],16:[function(_dereq_,module,exports){
-var Class = _dereq_('klasse');
+},{"./Camera":14,"klasse":44,"vecmath":64}],16:[function(require,module,exports){
+var Class = require('klasse');
 
-var Matrix4 = _dereq_('vecmath').Matrix4;
-var Vector2 = _dereq_('vecmath').Vector2;
-var Vector3 = _dereq_('vecmath').Vector3;
-var Camera = _dereq_('./Camera');
+var Matrix4 = require('vecmath').Matrix4;
+var Vector2 = require('vecmath').Vector2;
+var Vector3 = require('vecmath').Vector3;
+var Camera = require('./Camera');
 
 var tmpVec3 = new Vector3();
 
@@ -2233,18 +2421,18 @@ var PerspectiveCamera = new Class({
 });
 
 module.exports = PerspectiveCamera;
-},{"./Camera":14,"klasse":34,"vecmath":53}],17:[function(_dereq_,module,exports){
+},{"./Camera":14,"klasse":44,"vecmath":64}],17:[function(require,module,exports){
 module.exports = {
-	vecutil: _dereq_('./vecutil'),
-	Camera: _dereq_('./Camera'),
-    PerspectiveCamera: _dereq_('./PerspectiveCamera'),
-    OrthographicCamera: _dereq_('./OrthographicCamera')
+	vecutil: require('./vecutil'),
+	Camera: require('./Camera'),
+    PerspectiveCamera: require('./PerspectiveCamera'),
+    OrthographicCamera: require('./OrthographicCamera')
 };
-},{"./Camera":14,"./OrthographicCamera":15,"./PerspectiveCamera":16,"./vecutil":18}],18:[function(_dereq_,module,exports){
+},{"./Camera":14,"./OrthographicCamera":15,"./PerspectiveCamera":16,"./vecutil":18}],18:[function(require,module,exports){
 
-var Vector3 = _dereq_('vecmath').Vector3;
-var Matrix4 = _dereq_('vecmath').Matrix4;
-var Quaternion = _dereq_('vecmath').Quaternion;
+var Vector3 = require('vecmath').Vector3;
+var Matrix4 = require('vecmath').Matrix4;
+var Quaternion = require('vecmath').Quaternion;
 
 var tmpMat4 = new Matrix4();
 var tmpQuat = new Quaternion();
@@ -2275,7 +2463,7 @@ util.rotate = function(vec, axis, radians) {
 };
 
 module.exports = util;
-},{"vecmath":53}],19:[function(_dereq_,module,exports){
+},{"vecmath":64}],19:[function(require,module,exports){
 /** Utility function for linear interpolation. */
 module.exports.lerp = function(v0, v1, t) {
     return v0*(1-t)+v1*t;
@@ -2288,17 +2476,17 @@ module.exports.smoothstep = function(v0, v1, t) {
     // Evaluate polynomial
     return t*t*(3 - 2*t);
 };
-},{}],20:[function(_dereq_,module,exports){
+},{}],20:[function(require,module,exports){
 module.exports = {
-    MeshRenderer: _dereq_('./lib/MeshRenderer'),
+    MeshRenderer: require('./lib/MeshRenderer'),
 };
-},{"./lib/MeshRenderer":21}],21:[function(_dereq_,module,exports){
-var Class = _dereq_('klasse');
-var Mesh = _dereq_('kami').Mesh;
-var ShaderProgram = _dereq_('kami').ShaderProgram;
+},{"./lib/MeshRenderer":21}],21:[function(require,module,exports){
+var Class = require('klasse');
+var Mesh = require('kami').Mesh;
+var ShaderProgram = require('kami').ShaderProgram;
 
-var Matrix4 = _dereq_('vecmath').Matrix4;
-var colorToFloat = _dereq_('number-util').colorToFloat;
+var Matrix4 = require('vecmath').Matrix4;
+var colorToFloat = require('number-util').colorToFloat;
 
 
 ////TODOS:
@@ -2608,7 +2796,190 @@ MeshRenderer.createFragmentShader = function(hasColors, numTexCoords) {
 };
 
 module.exports = MeshRenderer;
-},{"kami":31,"klasse":34,"number-util":22,"vecmath":53}],22:[function(_dereq_,module,exports){
+},{"kami":40,"klasse":22,"number-util":23,"vecmath":31}],22:[function(require,module,exports){
+function hasGetterOrSetter(def) {
+	return (!!def.get && typeof def.get === "function") || (!!def.set && typeof def.set === "function");
+}
+
+function getProperty(definition, k, isClassDescriptor) {
+	//This may be a lightweight object, OR it might be a property
+	//that was defined previously.
+	
+	//For simple class descriptors we can just assume its NOT previously defined.
+	var def = isClassDescriptor 
+				? definition[k] 
+				: Object.getOwnPropertyDescriptor(definition, k);
+
+	if (!isClassDescriptor && def.value && typeof def.value === "object") {
+		def = def.value;
+	}
+
+
+	//This might be a regular property, or it may be a getter/setter the user defined in a class.
+	if ( def && hasGetterOrSetter(def) ) {
+		if (typeof def.enumerable === "undefined")
+			def.enumerable = true;
+		if (typeof def.configurable === "undefined")
+			def.configurable = true;
+		return def;
+	} else {
+		return false;
+	}
+}
+
+function hasNonConfigurable(obj, k) {
+	var prop = Object.getOwnPropertyDescriptor(obj, k);
+	if (!prop)
+		return false;
+
+	if (prop.value && typeof prop.value === "object")
+		prop = prop.value;
+
+	if (prop.configurable === false) 
+		return true;
+
+	return false;
+}
+
+//TODO: On create, 
+//		On mixin, 
+
+function extend(ctor, definition, isClassDescriptor, extend) {
+	for (var k in definition) {
+		if (!definition.hasOwnProperty(k))
+			continue;
+
+		var def = getProperty(definition, k, isClassDescriptor);
+
+		if (def !== false) {
+			//If Extends is used, we will check its prototype to see if 
+			//the final variable exists.
+			
+			var parent = extend || ctor;
+			if (hasNonConfigurable(parent.prototype, k)) {
+
+				//just skip the final property
+				if (Class.ignoreFinals)
+					continue;
+
+				//We cannot re-define a property that is configurable=false.
+				//So we will consider them final and throw an error. This is by
+				//default so it is clear to the developer what is happening.
+				//You can set ignoreFinals to true if you need to extend a class
+				//which has configurable=false; it will simply not re-define final properties.
+				throw new Error("cannot override final property '"+k
+							+"', set Class.ignoreFinals = true to skip");
+			}
+
+			Object.defineProperty(ctor.prototype, k, def);
+		} else {
+			ctor.prototype[k] = definition[k];
+		}
+
+	}
+}
+
+/**
+ */
+function mixin(myClass, mixins) {
+	if (!mixins)
+		return;
+
+	if (!Array.isArray(mixins))
+		mixins = [mixins];
+
+	for (var i=0; i<mixins.length; i++) {
+		extend(myClass, mixins[i].prototype || mixins[i]);
+	}
+}
+
+/**
+ * Creates a new class with the given descriptor.
+ * The constructor, defined by the name `initialize`,
+ * is an optional function. If unspecified, an anonymous
+ * function will be used which calls the parent class (if
+ * one exists). 
+ *
+ * You can also use `Extends` and `Mixins` to provide subclassing
+ * and inheritance.
+ *
+ * @class  Class
+ * @constructor
+ * @param {Object} definition a dictionary of functions for the class
+ * @example
+ *
+ * 		var MyClass = new Class({
+ * 		
+ * 			initialize: function() {
+ * 				this.foo = 2.0;
+ * 			},
+ *
+ * 			bar: function() {
+ * 				return this.foo + 5;
+ * 			}
+ * 		});
+ */
+function Class(definition) {
+	if (!definition)
+		definition = {};
+
+	//The variable name here dictates what we see in Chrome debugger
+	var initialize;
+	var Extends;
+
+	if (definition.initialize) {
+		if (typeof definition.initialize !== "function")
+			throw new Error("initialize must be a function");
+		initialize = definition.initialize;
+
+		//Usually we should avoid "delete" in V8 at all costs.
+		//However, its unlikely to make any performance difference
+		//here since we only call this on class creation (i.e. not object creation).
+		delete definition.initialize;
+	} else {
+		if (definition.Extends) {
+			var base = definition.Extends;
+			initialize = function () {
+				base.apply(this, arguments);
+			}; 
+		} else {
+			initialize = function () {}; 
+		}
+	}
+
+	if (definition.Extends) {
+		initialize.prototype = Object.create(definition.Extends.prototype);
+		initialize.prototype.constructor = initialize;
+		//for getOwnPropertyDescriptor to work, we need to act
+		//directly on the Extends (or Mixin)
+		Extends = definition.Extends;
+		delete definition.Extends;
+	} else {
+		initialize.prototype.constructor = initialize;
+	}
+
+	//Grab the mixins, if they are specified...
+	var mixins = null;
+	if (definition.Mixins) {
+		mixins = definition.Mixins;
+		delete definition.Mixins;
+	}
+
+	//First, mixin if we can.
+	mixin(initialize, mixins);
+
+	//Now we grab the actual definition which defines the overrides.
+	extend(initialize, definition, true, Extends);
+
+	return initialize;
+};
+
+Class.extend = extend;
+Class.mixin = mixin;
+Class.ignoreFinals = false;
+
+module.exports = Class;
+},{}],23:[function(require,module,exports){
 var int8 = new Int8Array(4);
 var int32 = new Int32Array(int8.buffer, 0, 1);
 var float32 = new Float32Array(int8.buffer, 0, 1);
@@ -2706,7 +3077,2112 @@ NumberUtil.nextPowerOfTwo = function(n) {
 };
 
 module.exports = NumberUtil;
-},{}],23:[function(_dereq_,module,exports){
+},{}],24:[function(require,module,exports){
+var ARRAY_TYPE = typeof Float32Array !== "undefined" ? Float32Array : Array;
+
+function Matrix3(m) {
+    this.val = new ARRAY_TYPE(9);
+
+    if (m) { //assume Matrix3 with val
+        this.copy(m);
+    } else { //default to identity
+        this.idt();
+    }
+}
+
+var mat3 = Matrix3.prototype;
+
+mat3.clone = function() {
+    return new Matrix3(this);
+};
+
+mat3.set = function(otherMat) {
+    return this.copy(otherMat);
+};
+
+mat3.copy = function(otherMat) {
+    var out = this.val,
+        a = otherMat.val; 
+    out[0] = a[0];
+    out[1] = a[1];
+    out[2] = a[2];
+    out[3] = a[3];
+    out[4] = a[4];
+    out[5] = a[5];
+    out[6] = a[6];
+    out[7] = a[7];
+    out[8] = a[8];
+    return this;
+};
+
+mat3.fromMat4 = function(m) {
+    var a = m.val,
+        out = this.val;
+    out[0] = a[0];
+    out[1] = a[1];
+    out[2] = a[2];
+    out[3] = a[4];
+    out[4] = a[5];
+    out[5] = a[6];
+    out[6] = a[8];
+    out[7] = a[9];
+    out[8] = a[10];
+    return this;
+};
+
+mat3.fromArray = function(a) {
+    var out = this.val;
+    out[0] = a[0];
+    out[1] = a[1];
+    out[2] = a[2];
+    out[3] = a[3];
+    out[4] = a[4];
+    out[5] = a[5];
+    out[6] = a[6];
+    out[7] = a[7];
+    out[8] = a[8];
+    return this;
+};
+
+mat3.identity = function() {
+    var out = this.val;
+    out[0] = 1;
+    out[1] = 0;
+    out[2] = 0;
+    out[3] = 0;
+    out[4] = 1;
+    out[5] = 0;
+    out[6] = 0;
+    out[7] = 0;
+    out[8] = 1;
+    return this;
+};
+
+mat3.transpose = function() {
+    var a = this.val,
+        a01 = a[1], 
+        a02 = a[2], 
+        a12 = a[5];
+    a[1] = a[3];
+    a[2] = a[6];
+    a[3] = a01;
+    a[5] = a[7];
+    a[6] = a02;
+    a[7] = a12;
+    return this;
+};
+
+mat3.invert = function() {
+    var a = this.val,
+        a00 = a[0], a01 = a[1], a02 = a[2],
+        a10 = a[3], a11 = a[4], a12 = a[5],
+        a20 = a[6], a21 = a[7], a22 = a[8],
+
+        b01 = a22 * a11 - a12 * a21,
+        b11 = -a22 * a10 + a12 * a20,
+        b21 = a21 * a10 - a11 * a20,
+
+        // Calculate the determinant
+        det = a00 * b01 + a01 * b11 + a02 * b21;
+
+    if (!det) { 
+        return null; 
+    }
+    det = 1.0 / det;
+
+    a[0] = b01 * det;
+    a[1] = (-a22 * a01 + a02 * a21) * det;
+    a[2] = (a12 * a01 - a02 * a11) * det;
+    a[3] = b11 * det;
+    a[4] = (a22 * a00 - a02 * a20) * det;
+    a[5] = (-a12 * a00 + a02 * a10) * det;
+    a[6] = b21 * det;
+    a[7] = (-a21 * a00 + a01 * a20) * det;
+    a[8] = (a11 * a00 - a01 * a10) * det;
+    return this;
+};
+
+mat3.adjoint = function() {
+    var a = this.val,
+        a00 = a[0], a01 = a[1], a02 = a[2],
+        a10 = a[3], a11 = a[4], a12 = a[5],
+        a20 = a[6], a21 = a[7], a22 = a[8];
+
+    a[0] = (a11 * a22 - a12 * a21);
+    a[1] = (a02 * a21 - a01 * a22);
+    a[2] = (a01 * a12 - a02 * a11);
+    a[3] = (a12 * a20 - a10 * a22);
+    a[4] = (a00 * a22 - a02 * a20);
+    a[5] = (a02 * a10 - a00 * a12);
+    a[6] = (a10 * a21 - a11 * a20);
+    a[7] = (a01 * a20 - a00 * a21);
+    a[8] = (a00 * a11 - a01 * a10);
+    return this;
+};
+
+mat3.determinant = function() {
+    var a = this.val,
+        a00 = a[0], a01 = a[1], a02 = a[2],
+        a10 = a[3], a11 = a[4], a12 = a[5],
+        a20 = a[6], a21 = a[7], a22 = a[8];
+
+    return a00 * (a22 * a11 - a12 * a21) + a01 * (-a22 * a10 + a12 * a20) + a02 * (a21 * a10 - a11 * a20);
+};
+
+mat3.multiply = function(otherMat) {
+    var a = this.val,
+        b = otherMat.val,
+        a00 = a[0], a01 = a[1], a02 = a[2],
+        a10 = a[3], a11 = a[4], a12 = a[5],
+        a20 = a[6], a21 = a[7], a22 = a[8],
+
+        b00 = b[0], b01 = b[1], b02 = b[2],
+        b10 = b[3], b11 = b[4], b12 = b[5],
+        b20 = b[6], b21 = b[7], b22 = b[8];
+
+    a[0] = b00 * a00 + b01 * a10 + b02 * a20;
+    a[1] = b00 * a01 + b01 * a11 + b02 * a21;
+    a[2] = b00 * a02 + b01 * a12 + b02 * a22;
+
+    a[3] = b10 * a00 + b11 * a10 + b12 * a20;
+    a[4] = b10 * a01 + b11 * a11 + b12 * a21;
+    a[5] = b10 * a02 + b11 * a12 + b12 * a22;
+
+    a[6] = b20 * a00 + b21 * a10 + b22 * a20;
+    a[7] = b20 * a01 + b21 * a11 + b22 * a21;
+    a[8] = b20 * a02 + b21 * a12 + b22 * a22;
+    return this;
+};
+
+mat3.translate = function(v) {
+    var a = this.val,
+        x = v.x, y = v.y;
+    a[6] = x * a[0] + y * a[3] + a[6];
+    a[7] = x * a[1] + y * a[4] + a[7];
+    a[8] = x * a[2] + y * a[5] + a[8];
+    return this;
+};
+
+mat3.rotate = function(rad) {
+    var a = this.val,
+        a00 = a[0], a01 = a[1], a02 = a[2],
+        a10 = a[3], a11 = a[4], a12 = a[5],
+
+        s = Math.sin(rad),
+        c = Math.cos(rad);
+
+    a[0] = c * a00 + s * a10;
+    a[1] = c * a01 + s * a11;
+    a[2] = c * a02 + s * a12;
+
+    a[3] = c * a10 - s * a00;
+    a[4] = c * a11 - s * a01;
+    a[5] = c * a12 - s * a02;
+    return this;
+};
+
+mat3.scale = function(v) {
+    var a = this.val,
+        x = v.x, 
+        y = v.y;
+
+    a[0] = x * a[0];
+    a[1] = x * a[1];
+    a[2] = x * a[2];
+
+    a[3] = y * a[3];
+    a[4] = y * a[4];
+    a[5] = y * a[5];
+    return this;
+};
+
+mat3.fromQuat = function(q) {
+    var x = q.x, y = q.y, z = q.z, w = q.w,
+        x2 = x + x,
+        y2 = y + y,
+        z2 = z + z,
+
+        xx = x * x2,
+        xy = x * y2,
+        xz = x * z2,
+        yy = y * y2,
+        yz = y * z2,
+        zz = z * z2,
+        wx = w * x2,
+        wy = w * y2,
+        wz = w * z2,
+
+        out = this.val;
+
+    out[0] = 1 - (yy + zz);
+    out[3] = xy + wz;
+    out[6] = xz - wy;
+
+    out[1] = xy - wz;
+    out[4] = 1 - (xx + zz);
+    out[7] = yz + wx;
+
+    out[2] = xz + wy;
+    out[5] = yz - wx;
+    out[8] = 1 - (xx + yy);
+    return this;
+};
+
+mat3.normalFromMat4 = function(m) {
+    var a = m.val,
+        out = this.val,
+
+        a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3],
+        a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
+        a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11],
+        a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15],
+
+        b00 = a00 * a11 - a01 * a10,
+        b01 = a00 * a12 - a02 * a10,
+        b02 = a00 * a13 - a03 * a10,
+        b03 = a01 * a12 - a02 * a11,
+        b04 = a01 * a13 - a03 * a11,
+        b05 = a02 * a13 - a03 * a12,
+        b06 = a20 * a31 - a21 * a30,
+        b07 = a20 * a32 - a22 * a30,
+        b08 = a20 * a33 - a23 * a30,
+        b09 = a21 * a32 - a22 * a31,
+        b10 = a21 * a33 - a23 * a31,
+        b11 = a22 * a33 - a23 * a32,
+
+        // Calculate the determinant
+        det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+
+    if (!det) { 
+        return null; 
+    }
+    det = 1.0 / det;
+
+    out[0] = (a11 * b11 - a12 * b10 + a13 * b09) * det;
+    out[1] = (a12 * b08 - a10 * b11 - a13 * b07) * det;
+    out[2] = (a10 * b10 - a11 * b08 + a13 * b06) * det;
+
+    out[3] = (a02 * b10 - a01 * b11 - a03 * b09) * det;
+    out[4] = (a00 * b11 - a02 * b08 + a03 * b07) * det;
+    out[5] = (a01 * b08 - a00 * b10 - a03 * b06) * det;
+
+    out[6] = (a31 * b05 - a32 * b04 + a33 * b03) * det;
+    out[7] = (a32 * b02 - a30 * b05 - a33 * b01) * det;
+    out[8] = (a30 * b04 - a31 * b02 + a33 * b00) * det;
+    return this;
+};
+
+mat3.mul = mat3.multiply;
+
+mat3.idt = mat3.identity;
+
+//This is handy for Pool utilities, to "reset" a
+//shared object to its default state
+mat3.reset = mat3.idt;
+
+mat3.toString = function() {
+    var a = this.val;
+    return 'Matrix3(' + a[0] + ', ' + a[1] + ', ' + a[2] + ', ' + 
+                    a[3] + ', ' + a[4] + ', ' + a[5] + ', ' + 
+                    a[6] + ', ' + a[7] + ', ' + a[8] + ')';
+};
+
+mat3.str = mat3.toString;
+
+module.exports = Matrix3;
+},{}],25:[function(require,module,exports){
+var ARRAY_TYPE = typeof Float32Array !== "undefined" ? Float32Array : Array;
+var EPSILON = 0.000001;
+
+function Matrix4(m) {
+    this.val = new ARRAY_TYPE(16);
+
+    if (m) { //assume Matrix4 with val
+        this.copy(m);
+    } else { //default to identity
+        this.idt();
+    }
+}
+
+var mat4 = Matrix4.prototype;
+
+mat4.clone = function() {
+    return new Matrix4(this);
+};
+
+mat4.set = function(otherMat) {
+    return this.copy(otherMat);
+};
+
+mat4.copy = function(otherMat) {
+    var out = this.val,
+        a = otherMat.val; 
+    out[0] = a[0];
+    out[1] = a[1];
+    out[2] = a[2];
+    out[3] = a[3];
+    out[4] = a[4];
+    out[5] = a[5];
+    out[6] = a[6];
+    out[7] = a[7];
+    out[8] = a[8];
+    out[9] = a[9];
+    out[10] = a[10];
+    out[11] = a[11];
+    out[12] = a[12];
+    out[13] = a[13];
+    out[14] = a[14];
+    out[15] = a[15];
+    return this;
+};
+
+mat4.fromArray = function(a) {
+    var out = this.val;
+    out[0] = a[0];
+    out[1] = a[1];
+    out[2] = a[2];
+    out[3] = a[3];
+    out[4] = a[4];
+    out[5] = a[5];
+    out[6] = a[6];
+    out[7] = a[7];
+    out[8] = a[8];
+    out[9] = a[9];
+    out[10] = a[10];
+    out[11] = a[11];
+    out[12] = a[12];
+    out[13] = a[13];
+    out[14] = a[14];
+    out[15] = a[15];
+    return this;
+};
+
+mat4.identity = function() {
+    var out = this.val;
+    out[0] = 1;
+    out[1] = 0;
+    out[2] = 0;
+    out[3] = 0;
+    out[4] = 0;
+    out[5] = 1;
+    out[6] = 0;
+    out[7] = 0;
+    out[8] = 0;
+    out[9] = 0;
+    out[10] = 1;
+    out[11] = 0;
+    out[12] = 0;
+    out[13] = 0;
+    out[14] = 0;
+    out[15] = 1;
+    return this;
+};
+
+mat4.transpose = function() {
+    var a = this.val,
+        a01 = a[1], a02 = a[2], a03 = a[3],
+        a12 = a[6], a13 = a[7],
+        a23 = a[11];
+
+    a[1] = a[4];
+    a[2] = a[8];
+    a[3] = a[12];
+    a[4] = a01;
+    a[6] = a[9];
+    a[7] = a[13];
+    a[8] = a02;
+    a[9] = a12;
+    a[11] = a[14];
+    a[12] = a03;
+    a[13] = a13;
+    a[14] = a23;
+    return this;
+};
+
+mat4.invert = function() {
+    var a = this.val,
+        a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3],
+        a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
+        a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11],
+        a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15],
+
+        b00 = a00 * a11 - a01 * a10,
+        b01 = a00 * a12 - a02 * a10,
+        b02 = a00 * a13 - a03 * a10,
+        b03 = a01 * a12 - a02 * a11,
+        b04 = a01 * a13 - a03 * a11,
+        b05 = a02 * a13 - a03 * a12,
+        b06 = a20 * a31 - a21 * a30,
+        b07 = a20 * a32 - a22 * a30,
+        b08 = a20 * a33 - a23 * a30,
+        b09 = a21 * a32 - a22 * a31,
+        b10 = a21 * a33 - a23 * a31,
+        b11 = a22 * a33 - a23 * a32,
+
+        // Calculate the determinant
+        det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+
+    if (!det) { 
+        return null; 
+    }
+    det = 1.0 / det;
+
+    a[0] = (a11 * b11 - a12 * b10 + a13 * b09) * det;
+    a[1] = (a02 * b10 - a01 * b11 - a03 * b09) * det;
+    a[2] = (a31 * b05 - a32 * b04 + a33 * b03) * det;
+    a[3] = (a22 * b04 - a21 * b05 - a23 * b03) * det;
+    a[4] = (a12 * b08 - a10 * b11 - a13 * b07) * det;
+    a[5] = (a00 * b11 - a02 * b08 + a03 * b07) * det;
+    a[6] = (a32 * b02 - a30 * b05 - a33 * b01) * det;
+    a[7] = (a20 * b05 - a22 * b02 + a23 * b01) * det;
+    a[8] = (a10 * b10 - a11 * b08 + a13 * b06) * det;
+    a[9] = (a01 * b08 - a00 * b10 - a03 * b06) * det;
+    a[10] = (a30 * b04 - a31 * b02 + a33 * b00) * det;
+    a[11] = (a21 * b02 - a20 * b04 - a23 * b00) * det;
+    a[12] = (a11 * b07 - a10 * b09 - a12 * b06) * det;
+    a[13] = (a00 * b09 - a01 * b07 + a02 * b06) * det;
+    a[14] = (a31 * b01 - a30 * b03 - a32 * b00) * det;
+    a[15] = (a20 * b03 - a21 * b01 + a22 * b00) * det;
+    return this;
+};
+
+mat4.adjoint = function() {
+    var a = this.val,
+        a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3],
+        a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
+        a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11],
+        a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+
+    a[0]  =  (a11 * (a22 * a33 - a23 * a32) - a21 * (a12 * a33 - a13 * a32) + a31 * (a12 * a23 - a13 * a22));
+    a[1]  = -(a01 * (a22 * a33 - a23 * a32) - a21 * (a02 * a33 - a03 * a32) + a31 * (a02 * a23 - a03 * a22));
+    a[2]  =  (a01 * (a12 * a33 - a13 * a32) - a11 * (a02 * a33 - a03 * a32) + a31 * (a02 * a13 - a03 * a12));
+    a[3]  = -(a01 * (a12 * a23 - a13 * a22) - a11 * (a02 * a23 - a03 * a22) + a21 * (a02 * a13 - a03 * a12));
+    a[4]  = -(a10 * (a22 * a33 - a23 * a32) - a20 * (a12 * a33 - a13 * a32) + a30 * (a12 * a23 - a13 * a22));
+    a[5]  =  (a00 * (a22 * a33 - a23 * a32) - a20 * (a02 * a33 - a03 * a32) + a30 * (a02 * a23 - a03 * a22));
+    a[6]  = -(a00 * (a12 * a33 - a13 * a32) - a10 * (a02 * a33 - a03 * a32) + a30 * (a02 * a13 - a03 * a12));
+    a[7]  =  (a00 * (a12 * a23 - a13 * a22) - a10 * (a02 * a23 - a03 * a22) + a20 * (a02 * a13 - a03 * a12));
+    a[8]  =  (a10 * (a21 * a33 - a23 * a31) - a20 * (a11 * a33 - a13 * a31) + a30 * (a11 * a23 - a13 * a21));
+    a[9]  = -(a00 * (a21 * a33 - a23 * a31) - a20 * (a01 * a33 - a03 * a31) + a30 * (a01 * a23 - a03 * a21));
+    a[10] =  (a00 * (a11 * a33 - a13 * a31) - a10 * (a01 * a33 - a03 * a31) + a30 * (a01 * a13 - a03 * a11));
+    a[11] = -(a00 * (a11 * a23 - a13 * a21) - a10 * (a01 * a23 - a03 * a21) + a20 * (a01 * a13 - a03 * a11));
+    a[12] = -(a10 * (a21 * a32 - a22 * a31) - a20 * (a11 * a32 - a12 * a31) + a30 * (a11 * a22 - a12 * a21));
+    a[13] =  (a00 * (a21 * a32 - a22 * a31) - a20 * (a01 * a32 - a02 * a31) + a30 * (a01 * a22 - a02 * a21));
+    a[14] = -(a00 * (a11 * a32 - a12 * a31) - a10 * (a01 * a32 - a02 * a31) + a30 * (a01 * a12 - a02 * a11));
+    a[15] =  (a00 * (a11 * a22 - a12 * a21) - a10 * (a01 * a22 - a02 * a21) + a20 * (a01 * a12 - a02 * a11));
+    return this;
+};
+
+mat4.determinant = function () {
+    var a = this.val,
+        a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3],
+        a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
+        a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11],
+        a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15],
+
+        b00 = a00 * a11 - a01 * a10,
+        b01 = a00 * a12 - a02 * a10,
+        b02 = a00 * a13 - a03 * a10,
+        b03 = a01 * a12 - a02 * a11,
+        b04 = a01 * a13 - a03 * a11,
+        b05 = a02 * a13 - a03 * a12,
+        b06 = a20 * a31 - a21 * a30,
+        b07 = a20 * a32 - a22 * a30,
+        b08 = a20 * a33 - a23 * a30,
+        b09 = a21 * a32 - a22 * a31,
+        b10 = a21 * a33 - a23 * a31,
+        b11 = a22 * a33 - a23 * a32;
+
+    // Calculate the determinant
+    return b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+};
+
+mat4.multiply = function(otherMat) {
+    var a = this.val,
+        b = otherMat.val,
+        a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3],
+        a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
+        a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11],
+        a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+
+    // Cache only the current line of the second matrix
+    var b0  = b[0], b1 = b[1], b2 = b[2], b3 = b[3];  
+    a[0] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+    a[1] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+    a[2] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+    a[3] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+
+    b0 = b[4]; b1 = b[5]; b2 = b[6]; b3 = b[7];
+    a[4] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+    a[5] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+    a[6] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+    a[7] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+
+    b0 = b[8]; b1 = b[9]; b2 = b[10]; b3 = b[11];
+    a[8] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+    a[9] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+    a[10] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+    a[11] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+
+    b0 = b[12]; b1 = b[13]; b2 = b[14]; b3 = b[15];
+    a[12] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+    a[13] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+    a[14] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+    a[15] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+    return this;
+};
+
+mat4.translate = function(v) {
+    var x = v.x, y = v.y, z = v.z,
+        a = this.val;
+    a[12] = a[0] * x + a[4] * y + a[8] * z + a[12];
+    a[13] = a[1] * x + a[5] * y + a[9] * z + a[13];
+    a[14] = a[2] * x + a[6] * y + a[10] * z + a[14];
+    a[15] = a[3] * x + a[7] * y + a[11] * z + a[15];
+    return this;
+};
+
+mat4.scale = function(v) {
+    var x = v.x, y = v.y, z = v.z, a = this.val;
+
+    a[0] = a[0] * x;
+    a[1] = a[1] * x;
+    a[2] = a[2] * x;
+    a[3] = a[3] * x;
+    a[4] = a[4] * y;
+    a[5] = a[5] * y;
+    a[6] = a[6] * y;
+    a[7] = a[7] * y;
+    a[8] = a[8] * z;
+    a[9] = a[9] * z;
+    a[10] = a[10] * z;
+    a[11] = a[11] * z;
+    a[12] = a[12];
+    a[13] = a[13];
+    a[14] = a[14];
+    a[15] = a[15];
+    return this;
+};
+
+mat4.rotate = function (rad, axis) {
+    var a = this.val,
+        x = axis.x, y = axis.y, z = axis.z,
+        len = Math.sqrt(x * x + y * y + z * z),
+        s, c, t,
+        a00, a01, a02, a03,
+        a10, a11, a12, a13,
+        a20, a21, a22, a23,
+        b00, b01, b02,
+        b10, b11, b12,
+        b20, b21, b22;
+
+    if (Math.abs(len) < EPSILON) { return null; }
+    
+    len = 1 / len;
+    x *= len;
+    y *= len;
+    z *= len;
+
+    s = Math.sin(rad);
+    c = Math.cos(rad);
+    t = 1 - c;
+
+    a00 = a[0]; a01 = a[1]; a02 = a[2]; a03 = a[3];
+    a10 = a[4]; a11 = a[5]; a12 = a[6]; a13 = a[7];
+    a20 = a[8]; a21 = a[9]; a22 = a[10]; a23 = a[11];
+
+    // Construct the elements of the rotation matrix
+    b00 = x * x * t + c; b01 = y * x * t + z * s; b02 = z * x * t - y * s;
+    b10 = x * y * t - z * s; b11 = y * y * t + c; b12 = z * y * t + x * s;
+    b20 = x * z * t + y * s; b21 = y * z * t - x * s; b22 = z * z * t + c;
+
+    // Perform rotation-specific matrix multiplication
+    a[0] = a00 * b00 + a10 * b01 + a20 * b02;
+    a[1] = a01 * b00 + a11 * b01 + a21 * b02;
+    a[2] = a02 * b00 + a12 * b01 + a22 * b02;
+    a[3] = a03 * b00 + a13 * b01 + a23 * b02;
+    a[4] = a00 * b10 + a10 * b11 + a20 * b12;
+    a[5] = a01 * b10 + a11 * b11 + a21 * b12;
+    a[6] = a02 * b10 + a12 * b11 + a22 * b12;
+    a[7] = a03 * b10 + a13 * b11 + a23 * b12;
+    a[8] = a00 * b20 + a10 * b21 + a20 * b22;
+    a[9] = a01 * b20 + a11 * b21 + a21 * b22;
+    a[10] = a02 * b20 + a12 * b21 + a22 * b22;
+    a[11] = a03 * b20 + a13 * b21 + a23 * b22;
+    return this;
+};
+
+mat4.rotateX = function(rad) {
+    var a = this.val,
+        s = Math.sin(rad),
+        c = Math.cos(rad),
+        a10 = a[4],
+        a11 = a[5],
+        a12 = a[6],
+        a13 = a[7],
+        a20 = a[8],
+        a21 = a[9],
+        a22 = a[10],
+        a23 = a[11];
+
+    // Perform axis-specific matrix multiplication
+    a[4] = a10 * c + a20 * s;
+    a[5] = a11 * c + a21 * s;
+    a[6] = a12 * c + a22 * s;
+    a[7] = a13 * c + a23 * s;
+    a[8] = a20 * c - a10 * s;
+    a[9] = a21 * c - a11 * s;
+    a[10] = a22 * c - a12 * s;
+    a[11] = a23 * c - a13 * s;
+    return this;
+};
+
+mat4.rotateY = function(rad) {
+    var a = this.val,
+        s = Math.sin(rad),
+        c = Math.cos(rad),
+        a00 = a[0],
+        a01 = a[1],
+        a02 = a[2],
+        a03 = a[3],
+        a20 = a[8],
+        a21 = a[9],
+        a22 = a[10],
+        a23 = a[11];
+
+    // Perform axis-specific matrix multiplication
+    a[0] = a00 * c - a20 * s;
+    a[1] = a01 * c - a21 * s;
+    a[2] = a02 * c - a22 * s;
+    a[3] = a03 * c - a23 * s;
+    a[8] = a00 * s + a20 * c;
+    a[9] = a01 * s + a21 * c;
+    a[10] = a02 * s + a22 * c;
+    a[11] = a03 * s + a23 * c;
+    return this;
+};
+
+mat4.rotateZ = function (rad) {
+    var a = this.val,
+        s = Math.sin(rad),
+        c = Math.cos(rad),
+        a00 = a[0],
+        a01 = a[1],
+        a02 = a[2],
+        a03 = a[3],
+        a10 = a[4],
+        a11 = a[5],
+        a12 = a[6],
+        a13 = a[7];
+
+    // Perform axis-specific matrix multiplication
+    a[0] = a00 * c + a10 * s;
+    a[1] = a01 * c + a11 * s;
+    a[2] = a02 * c + a12 * s;
+    a[3] = a03 * c + a13 * s;
+    a[4] = a10 * c - a00 * s;
+    a[5] = a11 * c - a01 * s;
+    a[6] = a12 * c - a02 * s;
+    a[7] = a13 * c - a03 * s;
+    return this;
+};
+
+mat4.fromRotationTranslation = function (q, v) {
+    // Quaternion math
+    var out = this.val,
+        x = q.x, y = q.y, z = q.z, w = q.w,
+        x2 = x + x,
+        y2 = y + y,
+        z2 = z + z,
+
+        xx = x * x2,
+        xy = x * y2,
+        xz = x * z2,
+        yy = y * y2,
+        yz = y * z2,
+        zz = z * z2,
+        wx = w * x2,
+        wy = w * y2,
+        wz = w * z2;
+
+    out[0] = 1 - (yy + zz);
+    out[1] = xy + wz;
+    out[2] = xz - wy;
+    out[3] = 0;
+    out[4] = xy - wz;
+    out[5] = 1 - (xx + zz);
+    out[6] = yz + wx;
+    out[7] = 0;
+    out[8] = xz + wy;
+    out[9] = yz - wx;
+    out[10] = 1 - (xx + yy);
+    out[11] = 0;
+    out[12] = v.x;
+    out[13] = v.y;
+    out[14] = v.z;
+    out[15] = 1;
+    return this;
+};
+
+mat4.fromQuat = function (q) {
+    var out = this.val,
+        x = q.x, y = q.y, z = q.z, w = q.w,
+        x2 = x + x,
+        y2 = y + y,
+        z2 = z + z,
+
+        xx = x * x2,
+        xy = x * y2,
+        xz = x * z2,
+        yy = y * y2,
+        yz = y * z2,
+        zz = z * z2,
+        wx = w * x2,
+        wy = w * y2,
+        wz = w * z2;
+
+    out[0] = 1 - (yy + zz);
+    out[1] = xy + wz;
+    out[2] = xz - wy;
+    out[3] = 0;
+
+    out[4] = xy - wz;
+    out[5] = 1 - (xx + zz);
+    out[6] = yz + wx;
+    out[7] = 0;
+
+    out[8] = xz + wy;
+    out[9] = yz - wx;
+    out[10] = 1 - (xx + yy);
+    out[11] = 0;
+
+    out[12] = 0;
+    out[13] = 0;
+    out[14] = 0;
+    out[15] = 1;
+
+    return this;
+};
+
+
+/**
+ * Generates a frustum matrix with the given bounds
+ *
+ * @param {Number} left Left bound of the frustum
+ * @param {Number} right Right bound of the frustum
+ * @param {Number} bottom Bottom bound of the frustum
+ * @param {Number} top Top bound of the frustum
+ * @param {Number} near Near bound of the frustum
+ * @param {Number} far Far bound of the frustum
+ * @returns {Matrix4} this for chaining
+ */
+mat4.frustum = function (left, right, bottom, top, near, far) {
+    var out = this.val,
+        rl = 1 / (right - left),
+        tb = 1 / (top - bottom),
+        nf = 1 / (near - far);
+    out[0] = (near * 2) * rl;
+    out[1] = 0;
+    out[2] = 0;
+    out[3] = 0;
+    out[4] = 0;
+    out[5] = (near * 2) * tb;
+    out[6] = 0;
+    out[7] = 0;
+    out[8] = (right + left) * rl;
+    out[9] = (top + bottom) * tb;
+    out[10] = (far + near) * nf;
+    out[11] = -1;
+    out[12] = 0;
+    out[13] = 0;
+    out[14] = (far * near * 2) * nf;
+    out[15] = 0;
+    return this;
+};
+
+
+/**
+ * Generates a perspective projection matrix with the given bounds
+ *
+ * @param {number} fovy Vertical field of view in radians
+ * @param {number} aspect Aspect ratio. typically viewport width/height
+ * @param {number} near Near bound of the frustum
+ * @param {number} far Far bound of the frustum
+ * @returns {Matrix4} this for chaining
+ */
+mat4.perspective = function (fovy, aspect, near, far) {
+    var out = this.val,
+        f = 1.0 / Math.tan(fovy / 2),
+        nf = 1 / (near - far);
+    out[0] = f / aspect;
+    out[1] = 0;
+    out[2] = 0;
+    out[3] = 0;
+    out[4] = 0;
+    out[5] = f;
+    out[6] = 0;
+    out[7] = 0;
+    out[8] = 0;
+    out[9] = 0;
+    out[10] = (far + near) * nf;
+    out[11] = -1;
+    out[12] = 0;
+    out[13] = 0;
+    out[14] = (2 * far * near) * nf;
+    out[15] = 0;
+    return this;
+};
+
+/**
+ * Generates a orthogonal projection matrix with the given bounds
+ *
+ * @param {number} left Left bound of the frustum
+ * @param {number} right Right bound of the frustum
+ * @param {number} bottom Bottom bound of the frustum
+ * @param {number} top Top bound of the frustum
+ * @param {number} near Near bound of the frustum
+ * @param {number} far Far bound of the frustum
+ * @returns {Matrix4} this for chaining
+ */
+mat4.ortho = function (left, right, bottom, top, near, far) {
+    var out = this.val,
+        lr = 1 / (left - right),
+        bt = 1 / (bottom - top),
+        nf = 1 / (near - far);
+    out[0] = -2 * lr;
+    out[1] = 0;
+    out[2] = 0;
+    out[3] = 0;
+    out[4] = 0;
+    out[5] = -2 * bt;
+    out[6] = 0;
+    out[7] = 0;
+    out[8] = 0;
+    out[9] = 0;
+    out[10] = 2 * nf;
+    out[11] = 0;
+    out[12] = (left + right) * lr;
+    out[13] = (top + bottom) * bt;
+    out[14] = (far + near) * nf;
+    out[15] = 1;
+    return this;
+};
+
+/**
+ * Generates a look-at matrix with the given eye position, focal point, and up axis
+ *
+ * @param {Vector3} eye Position of the viewer
+ * @param {Vector3} center Point the viewer is looking at
+ * @param {Vector3} up vec3 pointing up
+ * @returns {Matrix4} this for chaining
+ */
+mat4.lookAt = function (eye, center, up) {
+    var out = this.val,
+
+        x0, x1, x2, y0, y1, y2, z0, z1, z2, len,
+        eyex = eye.x,
+        eyey = eye.y,
+        eyez = eye.z,
+        upx = up.x,
+        upy = up.y,
+        upz = up.z,
+        centerx = center.x,
+        centery = center.y,
+        centerz = center.z;
+
+    if (Math.abs(eyex - centerx) < EPSILON &&
+        Math.abs(eyey - centery) < EPSILON &&
+        Math.abs(eyez - centerz) < EPSILON) {
+        return this.identity();
+    }
+
+    z0 = eyex - centerx;
+    z1 = eyey - centery;
+    z2 = eyez - centerz;
+
+    len = 1 / Math.sqrt(z0 * z0 + z1 * z1 + z2 * z2);
+    z0 *= len;
+    z1 *= len;
+    z2 *= len;
+
+    x0 = upy * z2 - upz * z1;
+    x1 = upz * z0 - upx * z2;
+    x2 = upx * z1 - upy * z0;
+    len = Math.sqrt(x0 * x0 + x1 * x1 + x2 * x2);
+    if (!len) {
+        x0 = 0;
+        x1 = 0;
+        x2 = 0;
+    } else {
+        len = 1 / len;
+        x0 *= len;
+        x1 *= len;
+        x2 *= len;
+    }
+
+    y0 = z1 * x2 - z2 * x1;
+    y1 = z2 * x0 - z0 * x2;
+    y2 = z0 * x1 - z1 * x0;
+
+    len = Math.sqrt(y0 * y0 + y1 * y1 + y2 * y2);
+    if (!len) {
+        y0 = 0;
+        y1 = 0;
+        y2 = 0;
+    } else {
+        len = 1 / len;
+        y0 *= len;
+        y1 *= len;
+        y2 *= len;
+    }
+
+    out[0] = x0;
+    out[1] = y0;
+    out[2] = z0;
+    out[3] = 0;
+    out[4] = x1;
+    out[5] = y1;
+    out[6] = z1;
+    out[7] = 0;
+    out[8] = x2;
+    out[9] = y2;
+    out[10] = z2;
+    out[11] = 0;
+    out[12] = -(x0 * eyex + x1 * eyey + x2 * eyez);
+    out[13] = -(y0 * eyex + y1 * eyey + y2 * eyez);
+    out[14] = -(z0 * eyex + z1 * eyey + z2 * eyez);
+    out[15] = 1;
+
+    return this;
+};
+
+
+mat4.mul = mat4.multiply;
+
+mat4.idt = mat4.identity;
+
+//This is handy for Pool utilities, to "reset" a
+//shared object to its default state
+mat4.reset = mat4.idt;
+
+mat4.toString = function () {
+    var a = this.val;
+    return 'Matrix4(' + a[0] + ', ' + a[1] + ', ' + a[2] + ', ' + a[3] + ', ' +
+                    a[4] + ', ' + a[5] + ', ' + a[6] + ', ' + a[7] + ', ' +
+                    a[8] + ', ' + a[9] + ', ' + a[10] + ', ' + a[11] + ', ' + 
+                    a[12] + ', ' + a[13] + ', ' + a[14] + ', ' + a[15] + ')';
+};
+
+mat4.str = mat4.toString;
+
+module.exports = Matrix4;
+
+},{}],26:[function(require,module,exports){
+var Vector3 = require('./Vector3');
+var Matrix3 = require('./Matrix3');
+var common = require('./common');
+
+//some shared 'private' arrays
+var s_iNext = (typeof Int8Array !== 'undefined' ? new Int8Array([1,2,0]) : [1,2,0]);
+var tmp = (typeof Float32Array !== 'undefined' ? new Float32Array([0,0,0]) : [0,0,0]);
+
+var xUnitVec3 = new Vector3(1, 0, 0);
+var yUnitVec3 = new Vector3(0, 1, 0);
+var tmpvec = new Vector3();
+
+var tmpMat3 = new Matrix3();
+
+function Quaternion(x, y, z, w) {
+	if (typeof x === "object") {
+        this.x = x.x||0;
+        this.y = x.y||0;
+        this.z = x.z||0;
+        this.w = x.w||0;
+    } else {
+        this.x = x||0;
+        this.y = y||0;
+        this.z = z||0;
+        this.w = w||0;
+    }
+}
+
+var quat = Quaternion.prototype;
+
+//mixin common functions
+for (var k in common) {
+    quat[k] = common[k];
+}
+
+quat.rotationTo = function(a, b) {
+    var dot = a.x * b.x + a.y * b.y + a.z * b.z; //a.dot(b)
+    if (dot < -0.999999) {
+        if (tmpvec.copy(xUnitVec3).cross(a).len() < 0.000001)
+            tmpvec.copy(yUnitVec3).cross(a);
+        
+        tmpvec.normalize();
+        return this.setAxisAngle(tmpvec, Math.PI);
+    } else if (dot > 0.999999) {
+        this.x = 0;
+        this.y = 0;
+        this.z = 0;
+        this.w = 1;
+        return this;
+    } else {
+        tmpvec.copy(a).cross(b);
+        this.x = tmpvec.x;
+        this.y = tmpvec.y;
+        this.z = tmpvec.z;
+        this.w = 1 + dot;
+        return this.normalize();
+    }
+};
+
+quat.setAxes = function(view, right, up) {
+    var m = tmpMat3.val;
+    m[0] = right.x;
+    m[3] = right.y;
+    m[6] = right.z;
+
+    m[1] = up.x;
+    m[4] = up.y;
+    m[7] = up.z;
+
+    m[2] = -view.x;
+    m[5] = -view.y;
+    m[8] = -view.z;
+
+    return this.fromMat3(tmpMat3).normalize();
+};
+
+quat.identity = function() {
+    this.x = this.y = this.z = 0;
+    this.w = 1;
+    return this;
+};
+
+quat.setAxisAngle = function(axis, rad) {
+    rad = rad * 0.5;
+    var s = Math.sin(rad);
+    this.x = s * axis.x;
+    this.y = s * axis.y;
+    this.z = s * axis.z;
+    this.w = Math.cos(rad);
+    return this;
+};
+
+quat.multiply = function(b) {
+    var ax = this.x, ay = this.y, az = this.z, aw = this.w,
+        bx = b.x, by = b.y, bz = b.z, bw = b.w;
+
+    this.x = ax * bw + aw * bx + ay * bz - az * by;
+    this.y = ay * bw + aw * by + az * bx - ax * bz;
+    this.z = az * bw + aw * bz + ax * by - ay * bx;
+    this.w = aw * bw - ax * bx - ay * by - az * bz;
+    return this;
+};
+
+quat.slerp = function (b, t) {
+    // benchmarks:
+    //    http://jsperf.com/quaternion-slerp-implementations
+
+    var ax = this.x, ay = this.y, az = this.y, aw = this.y,
+        bx = b.x, by = b.y, bz = b.z, bw = b.w;
+
+    var        omega, cosom, sinom, scale0, scale1;
+
+    // calc cosine
+    cosom = ax * bx + ay * by + az * bz + aw * bw;
+    // adjust signs (if necessary)
+    if ( cosom < 0.0 ) {
+        cosom = -cosom;
+        bx = - bx;
+        by = - by;
+        bz = - bz;
+        bw = - bw;
+    }
+    // calculate coefficients
+    if ( (1.0 - cosom) > 0.000001 ) {
+        // standard case (slerp)
+        omega  = Math.acos(cosom);
+        sinom  = Math.sin(omega);
+        scale0 = Math.sin((1.0 - t) * omega) / sinom;
+        scale1 = Math.sin(t * omega) / sinom;
+    } else {        
+        // "from" and "to" quaternions are very close 
+        //  ... so we can do a linear interpolation
+        scale0 = 1.0 - t;
+        scale1 = t;
+    }
+    // calculate final values
+    this.x = scale0 * ax + scale1 * bx;
+    this.y = scale0 * ay + scale1 * by;
+    this.z = scale0 * az + scale1 * bz;
+    this.w = scale0 * aw + scale1 * bw;
+    return this;
+};
+
+quat.invert = function() {
+    var a0 = this.x, a1 = this.y, a2 = this.z, a3 = this.w,
+        dot = a0*a0 + a1*a1 + a2*a2 + a3*a3,
+        invDot = dot ? 1.0/dot : 0;
+    
+    // TODO: Would be faster to return [0,0,0,0] immediately if dot == 0
+
+    this.x = -a0*invDot;
+    this.y = -a1*invDot;
+    this.z = -a2*invDot;
+    this.w = a3*invDot;
+    return this;
+};
+
+quat.conjugate = function() {
+    this.x = -this.x;
+    this.y = -this.y;
+    this.z = -this.z;
+    return this;
+};
+
+quat.rotateX = function (rad) {
+    rad *= 0.5; 
+
+    var ax = this.x, ay = this.y, az = this.z, aw = this.w,
+        bx = Math.sin(rad), bw = Math.cos(rad);
+
+    this.x = ax * bw + aw * bx;
+    this.y = ay * bw + az * bx;
+    this.z = az * bw - ay * bx;
+    this.w = aw * bw - ax * bx;
+    return this;
+};
+
+quat.rotateY = function (rad) {
+    rad *= 0.5; 
+
+    var ax = this.x, ay = this.y, az = this.z, aw = this.w,
+        by = Math.sin(rad), bw = Math.cos(rad);
+
+    this.x = ax * bw - az * by;
+    this.y = ay * bw + aw * by;
+    this.z = az * bw + ax * by;
+    this.w = aw * bw - ay * by;
+    return this;
+};
+
+quat.rotateZ = function (rad) {
+    rad *= 0.5; 
+
+    var ax = this.x, ay = this.y, az = this.z, aw = this.w,
+        bz = Math.sin(rad), bw = Math.cos(rad);
+
+    this.x = ax * bw + ay * bz;
+    this.y = ay * bw - ax * bz;
+    this.z = az * bw + aw * bz;
+    this.w = aw * bw - az * bz;
+    return this;
+};
+
+quat.calculateW = function () {
+    var x = this.x, y = this.y, z = this.z;
+
+    this.x = x;
+    this.y = y;
+    this.z = z;
+    this.w = -Math.sqrt(Math.abs(1.0 - x * x - y * y - z * z));
+    return this;
+};
+
+quat.fromMat3 = function(mat) {
+    // benchmarks:
+    //    http://jsperf.com/typed-array-access-speed
+    //    http://jsperf.com/conversion-of-3x3-matrix-to-quaternion
+
+    // Algorithm in Ken Shoemake's article in 1987 SIGGRAPH course notes
+    // article "Quaternion Calculus and Fast Animation".
+    var m = mat.val,
+        fTrace = m[0] + m[4] + m[8];
+    var fRoot;
+
+    if ( fTrace > 0.0 ) {
+        // |w| > 1/2, may as well choose w > 1/2
+        fRoot = Math.sqrt(fTrace + 1.0);  // 2w
+        this.w = 0.5 * fRoot;
+        fRoot = 0.5/fRoot;  // 1/(4w)
+        this.x = (m[7]-m[5])*fRoot;
+        this.y = (m[2]-m[6])*fRoot;
+        this.z = (m[3]-m[1])*fRoot;
+    } else {
+        // |w| <= 1/2
+        var i = 0;
+        if ( m[4] > m[0] )
+          i = 1;
+        if ( m[8] > m[i*3+i] )
+          i = 2;
+        var j = s_iNext[i];
+        var k = s_iNext[j];
+            
+        //This isn't quite as clean without array access...
+        fRoot = Math.sqrt(m[i*3+i]-m[j*3+j]-m[k*3+k] + 1.0);
+        tmp[i] = 0.5 * fRoot;
+
+        fRoot = 0.5 / fRoot;
+        tmp[j] = (m[j*3+i] + m[i*3+j]) * fRoot;
+        tmp[k] = (m[k*3+i] + m[i*3+k]) * fRoot;
+
+        this.x = tmp[0];
+        this.y = tmp[1];
+        this.z = tmp[2];
+        this.w = (m[k*3+j] - m[j*3+k]) * fRoot;
+    }
+    
+    return this;
+};
+
+quat.idt = quat.identity;
+
+quat.sub = quat.subtract;
+
+quat.mul = quat.multiply;
+
+quat.len = quat.length;
+
+quat.lenSq = quat.lengthSq;
+
+//This is handy for Pool utilities, to "reset" a
+//shared object to its default state
+quat.reset = quat.idt;
+
+
+quat.toString = function() {
+    return 'Quaternion(' + this.x + ', ' + this.y + ', ' + this.z + ', ' + this.w + ')';
+};
+
+quat.str = quat.toString;
+
+module.exports = Quaternion;
+},{"./Matrix3":24,"./Vector3":28,"./common":30}],27:[function(require,module,exports){
+function Vector2(x, y) {
+	if (typeof x === "object") {
+        this.x = x.x||0;
+        this.y = x.y||0;
+    } else {
+        this.x = x||0;
+        this.y = y||0;
+    }
+}
+
+//shorthand it for better minification
+var vec2 = Vector2.prototype;
+
+/**
+ * Returns a new instance of Vector2 with
+ * this vector's components. 
+ * @return {Vector2} a clone of this vector
+ */
+vec2.clone = function() {
+    return new Vector2(this.x, this.y);
+};
+
+/**
+ * Copies the x, y components from the specified
+ * Vector. Any undefined components from `otherVec`
+ * will default to zero.
+ * 
+ * @param  {otherVec} the other Vector2 to copy
+ * @return {Vector2}  this, for chaining
+ */
+vec2.copy = function(otherVec) {
+    this.x = otherVec.x||0;
+    this.y = otherVec.y||0;
+    return this;
+};
+
+/**
+ * A convenience function to set the components of
+ * this vector as x and y. Falsy or undefined
+ * parameters will default to zero.
+ *
+ * You can also pass a vector object instead of
+ * individual components, to copy the object's components.
+ * 
+ * @param {Number} x the x component
+ * @param {Number} y the y component
+ * @return {Vector2}  this, for chaining
+ */
+vec2.set = function(x, y) {
+    if (typeof x === "object") {
+        this.x = x.x||0;
+        this.y = x.y||0;
+    } else {
+        this.x = x||0;
+        this.y = y||0;
+    }
+    return this;
+};
+
+vec2.add = function(v) {
+    this.x += v.x;
+    this.y += v.y;
+    return this;
+};
+
+vec2.subtract = function(v) {
+    this.x -= v.x;
+    this.y -= v.y;
+    return this;
+};
+
+vec2.multiply = function(v) {
+    this.x *= v.x;
+    this.y *= v.y;
+    return this;
+};
+
+vec2.scale = function(s) {
+    this.x *= s;
+    this.y *= s;
+    return this;
+};
+
+vec2.divide = function(v) {
+    this.x /= v.x;
+    this.y /= v.y;
+    return this;
+};
+
+vec2.negate = function() {
+    this.x = -this.x;
+    this.y = -this.y;
+    return this;
+};
+
+vec2.distance = function(v) {
+    var dx = v.x - this.x,
+        dy = v.y - this.y;
+    return Math.sqrt(dx*dx + dy*dy);
+};
+
+vec2.distanceSq = function(v) {
+    var dx = v.x - this.x,
+        dy = v.y - this.y;
+    return dx*dx + dy*dy;
+};
+
+vec2.length = function() {
+    var x = this.x,
+        y = this.y;
+    return Math.sqrt(x*x + y*y);
+};
+
+vec2.lengthSq = function() {
+    var x = this.x,
+        y = this.y;
+    return x*x + y*y;
+};
+
+vec2.normalize = function() {
+    var x = this.x,
+        y = this.y;
+    var len = x*x + y*y;
+    if (len > 0) {
+        len = 1 / Math.sqrt(len);
+        this.x = x*len;
+        this.y = y*len;
+    }
+    return this;
+};
+
+vec2.dot = function(v) {
+    return this.x * v.x + this.y * v.y;
+};
+
+//Unlike Vector3, this returns a scalar
+//http://allenchou.net/2013/07/cross-product-of-2d-vectors/
+vec2.cross = function(v) {
+    return this.x * v.y - this.y * v.x;
+};
+
+vec2.lerp = function(v, t) {
+    var ax = this.x,
+        ay = this.y;
+    t = t||0;
+    this.x = ax + t * (v.x - ax);
+    this.y = ay + t * (v.y - ay);
+    return this;
+};
+
+vec2.transformMat3 = function(mat) {
+    var x = this.x, y = this.y, m = mat.val;
+    this.x = m[0] * x + m[2] * y + m[4];
+    this.y = m[1] * x + m[3] * y + m[5];
+    return this;
+};
+
+vec2.transformMat4 = function(mat) {
+    var x = this.x, 
+        y = this.y,
+        m = mat.val;
+    this.x = m[0] * x + m[4] * y + m[12];
+    this.y = m[1] * x + m[5] * y + m[13];
+    return this;
+};
+
+vec2.reset = function() {
+    this.x = 0;
+    this.y = 0;
+    return this;
+};
+
+vec2.sub = vec2.subtract;
+
+vec2.mul = vec2.multiply;
+
+vec2.div = vec2.divide;
+
+vec2.dist = vec2.distance;
+
+vec2.distSq = vec2.distanceSq;
+
+vec2.len = vec2.length;
+
+vec2.lenSq = vec2.lengthSq;
+
+vec2.toString = function() {
+    return 'Vector2(' + this.x + ', ' + this.y + ')';
+};
+
+vec2.random = function(scale) {
+    scale = scale || 1.0;
+    var r = Math.random() * 2.0 * Math.PI;
+    this.x = Math.cos(r) * scale;
+    this.y = Math.sin(r) * scale;
+    return this;
+};
+
+vec2.str = vec2.toString;
+
+module.exports = Vector2;
+},{}],28:[function(require,module,exports){
+function Vector3(x, y, z) {
+    if (typeof x === "object") {
+        this.x = x.x||0;
+        this.y = x.y||0;
+        this.z = x.z||0;
+    } else {
+        this.x = x||0;
+        this.y = y||0;
+        this.z = z||0;
+    }
+}
+
+//shorthand it for better minification
+var vec3 = Vector3.prototype;
+
+vec3.clone = function() {
+    return new Vector3(this.x, this.y, this.z);
+};
+
+vec3.copy = function(otherVec) {
+    this.x = otherVec.x;
+    this.y = otherVec.y;
+    this.z = otherVec.z;
+    return this;
+};
+
+vec3.set = function(x, y, z) {
+    if (typeof x === "object") {
+        this.x = x.x||0;
+        this.y = x.y||0;
+        this.z = x.z||0;
+    } else {
+        this.x = x||0;
+        this.y = y||0;
+        this.z = z||0;
+    }
+    return this;
+};
+
+vec3.add = function(v) {
+    this.x += v.x;
+    this.y += v.y;
+    this.z += v.z;
+    return this;
+};
+
+vec3.subtract = function(v) {
+    this.x -= v.x;
+    this.y -= v.y;
+    this.z -= v.z;
+    return this;
+};
+
+vec3.multiply = function(v) {
+    this.x *= v.x;
+    this.y *= v.y;
+    this.z *= v.z;
+    return this;
+};
+
+vec3.scale = function(s) {
+    this.x *= s;
+    this.y *= s;
+    this.z *= s;
+    return this;
+};
+
+vec3.divide = function(v) {
+    this.x /= v.x;
+    this.y /= v.y;
+    this.z /= v.z;
+    return this;
+};
+
+vec3.negate = function() {
+    this.x = -this.x;
+    this.y = -this.y;
+    this.z = -this.z;
+    return this;
+};
+
+vec3.distance = function(v) {
+    var dx = v.x - this.x,
+        dy = v.y - this.y,
+        dz = v.z - this.z;
+    return Math.sqrt(dx*dx + dy*dy + dz*dz);
+};
+
+vec3.distanceSq = function(v) {
+    var dx = v.x - this.x,
+        dy = v.y - this.y,
+        dz = v.z - this.z;
+    return dx*dx + dy*dy + dz*dz;
+};
+
+vec3.length = function() {
+    var x = this.x,
+        y = this.y,
+        z = this.z;
+    return Math.sqrt(x*x + y*y + z*z);
+};
+
+vec3.lengthSq = function() {
+    var x = this.x,
+        y = this.y,
+        z = this.z;
+    return x*x + y*y + z*z;
+};
+
+vec3.normalize = function() {
+    var x = this.x,
+        y = this.y,
+        z = this.z;
+    var len = x*x + y*y + z*z;
+    if (len > 0) {
+        len = 1 / Math.sqrt(len);
+        this.x = x*len;
+        this.y = y*len;
+        this.z = z*len;
+    }
+    return this;
+};
+
+vec3.dot = function(v) {
+    return this.x * v.x + this.y * v.y + this.z * v.z;
+};
+
+vec3.cross = function(v) {
+    var ax = this.x, ay = this.y, az = this.z,
+        bx = v.x, by = v.y, bz = v.z;
+
+    this.x = ay * bz - az * by;
+    this.y = az * bx - ax * bz;
+    this.z = ax * by - ay * bx;
+    return this;
+};
+
+vec3.lerp = function(v, t) {
+    var ax = this.x,
+        ay = this.y,
+        az = this.z;
+    t = t||0;
+    this.x = ax + t * (v.x - ax);
+    this.y = ay + t * (v.y - ay);
+    this.z = az + t * (v.z - az);
+    return this;
+};
+
+vec3.transformMat4 = function(mat) {
+    var x = this.x, y = this.y, z = this.z, m = mat.val;
+    this.x = m[0] * x + m[4] * y + m[8] * z + m[12];
+    this.y = m[1] * x + m[5] * y + m[9] * z + m[13];
+    this.z = m[2] * x + m[6] * y + m[10] * z + m[14];
+    return this;
+};
+
+vec3.transformMat3 = function(mat) {
+    var x = this.x, y = this.y, z = this.z, m = mat.val;
+    this.x = x * m[0] + y * m[3] + z * m[6];
+    this.y = x * m[1] + y * m[4] + z * m[7];
+    this.z = x * m[2] + y * m[5] + z * m[8];
+    return this;
+};
+
+vec3.transformQuat = function(q) {
+    // benchmarks: http://jsperf.com/quaternion-transform-vec3-implementations
+    var x = this.x, y = this.y, z = this.z,
+        qx = q.x, qy = q.y, qz = q.z, qw = q.w,
+
+        // calculate quat * vec
+        ix = qw * x + qy * z - qz * y,
+        iy = qw * y + qz * x - qx * z,
+        iz = qw * z + qx * y - qy * x,
+        iw = -qx * x - qy * y - qz * z;
+
+    // calculate result * inverse quat
+    this.x = ix * qw + iw * -qx + iy * -qz - iz * -qy;
+    this.y = iy * qw + iw * -qy + iz * -qx - ix * -qz;
+    this.z = iz * qw + iw * -qz + ix * -qy - iy * -qx;
+    return this;
+};
+
+/**
+ * Multiplies this Vector3 by the specified matrix, 
+ * applying a W divide. This is useful for projection,
+ * e.g. unprojecting a 2D point into 3D space.
+ *
+ * @method  prj
+ * @param {Matrix4} the 4x4 matrix to multiply with 
+ * @return {Vector3} this object for chaining
+ */
+vec3.project = function(mat) {
+    var x = this.x,
+        y = this.y,
+        z = this.z,
+        m = mat.val,
+        a00 = m[0], a01 = m[1], a02 = m[2], a03 = m[3],
+        a10 = m[4], a11 = m[5], a12 = m[6], a13 = m[7],
+        a20 = m[8], a21 = m[9], a22 = m[10], a23 = m[11],
+        a30 = m[12], a31 = m[13], a32 = m[14], a33 = m[15];
+
+    var l_w = 1 / (x * a03 + y * a13 + z * a23 + a33);
+
+    this.x = (x * a00 + y * a10 + z * a20 + a30) * l_w; 
+    this.y = (x * a01 + y * a11 + z * a21 + a31) * l_w; 
+    this.z = (x * a02 + y * a12 + z * a22 + a32) * l_w;
+    return this;
+};
+
+/**
+ * Unproject this point from 2D space to 3D space.
+ * The point should have its x and y properties set to
+ * 2D screen space, and the z either at 0 (near plane)
+ * or 1 (far plane). The provided matrix is assumed to already
+ * be combined, i.e. projection * view * model.
+ *
+ * After this operation, this vector's (x, y, z) components will
+ * represent the unprojected 3D coordinate.
+ * 
+ * @param  {Vector4} viewport          screen x, y, width and height in pixels
+ * @param  {Matrix4} invProjectionView combined projection and view matrix
+ * @return {Vector3}                   this object, for chaining
+ */
+vec3.unproject = function(viewport, invProjectionView) {
+    var viewX = viewport.x,
+        viewY = viewport.y,
+        viewWidth = viewport.z,
+        viewHeight = viewport.w;
+    
+    var x = this.x, 
+        y = this.y,
+        z = this.z;
+
+    x = x - viewX;
+    y = viewHeight - y - 1;
+    y = y - viewY;
+
+    this.x = (2 * x) / viewWidth - 1;
+    this.y = (2 * y) / viewHeight - 1;
+    this.z = 2 * z - 1;
+
+    return this.project(invProjectionView);
+};
+
+vec3.random = function(scale) {
+    scale = scale || 1.0;
+
+    var r = Math.random() * 2.0 * Math.PI;
+    var z = (Math.random() * 2.0) - 1.0;
+    var zScale = Math.sqrt(1.0-z*z) * scale;
+    
+    this.x = Math.cos(r) * zScale;
+    this.y = Math.sin(r) * zScale;
+    this.z = z * scale;
+    return this;
+};
+
+vec3.reset = function() {
+    this.x = 0;
+    this.y = 0;
+    this.z = 0;
+    return this;
+};
+
+
+vec3.sub = vec3.subtract;
+
+vec3.mul = vec3.multiply;
+
+vec3.div = vec3.divide;
+
+vec3.dist = vec3.distance;
+
+vec3.distSq = vec3.distanceSq;
+
+vec3.len = vec3.length;
+
+vec3.lenSq = vec3.lengthSq;
+
+vec3.toString = function() {
+    return 'Vector3(' + this.x + ', ' + this.y + ', ' + this.z + ')';
+};
+
+vec3.str = vec3.toString;
+
+module.exports = Vector3;
+},{}],29:[function(require,module,exports){
+var common = require('./common');
+
+function Vector4(x, y, z, w) {
+	if (typeof x === "object") {
+        this.x = x.x||0;
+        this.y = x.y||0;
+        this.z = x.z||0;
+        this.w = x.w||0;
+    } else {
+        this.x = x||0;
+        this.y = y||0;
+        this.z = z||0;
+        this.w = w||0;
+    }
+}
+
+//shorthand it for better minification
+var vec4 = Vector4.prototype;
+
+//mixin common functions
+for (var k in common) {
+    vec4[k] = common[k];
+}
+
+vec4.clone = function() {
+    return new Vector4(this.x, this.y, this.z, this.w);
+};
+
+vec4.multiply = function(v) {
+    this.x *= v.x;
+    this.y *= v.y;
+    this.z *= v.z;
+    this.w *= v.w;
+    return this;
+};
+
+vec4.divide = function(v) {
+    this.x /= v.x;
+    this.y /= v.y;
+    this.z /= v.z;
+    this.w /= v.w;
+    return this;
+};
+
+vec4.distance = function(v) {
+    var dx = v.x - this.x,
+        dy = v.y - this.y,
+        dz = v.z - this.z,
+        dw = v.w - this.w;
+    return Math.sqrt(dx*dx + dy*dy + dz*dz + dw*dw);
+};
+
+vec4.distanceSq = function(v) {
+    var dx = v.x - this.x,
+        dy = v.y - this.y,
+        dz = v.z - this.z,
+        dw = v.w - this.w;
+    return dx*dx + dy*dy + dz*dz + dw*dw;
+};
+
+vec4.negate = function() {
+    this.x = -this.x;
+    this.y = -this.y;
+    this.z = -this.z;
+    this.w = -this.w;
+    return this;
+};
+
+vec4.transformMat4 = function(mat) {
+    var m = mat.val, x = this.x, y = this.y, z = this.z, w = this.w;
+    this.x = m[0] * x + m[4] * y + m[8] * z + m[12] * w;
+    this.y = m[1] * x + m[5] * y + m[9] * z + m[13] * w;
+    this.z = m[2] * x + m[6] * y + m[10] * z + m[14] * w;
+    this.w = m[3] * x + m[7] * y + m[11] * z + m[15] * w;
+    return this;
+};
+
+//// TODO: is this really the same as Vector3 ??
+///  Also, what about this:
+///  http://molecularmusings.wordpress.com/2013/05/24/a-faster-quaternion-vector-multiplication/
+vec4.transformQuat = function(q) {
+    // benchmarks: http://jsperf.com/quaternion-transform-vec3-implementations
+    var x = this.x, y = this.y, z = this.z,
+        qx = q.x, qy = q.y, qz = q.z, qw = q.w,
+
+        // calculate quat * vec
+        ix = qw * x + qy * z - qz * y,
+        iy = qw * y + qz * x - qx * z,
+        iz = qw * z + qx * y - qy * x,
+        iw = -qx * x - qy * y - qz * z;
+
+    // calculate result * inverse quat
+    this.x = ix * qw + iw * -qx + iy * -qz - iz * -qy;
+    this.y = iy * qw + iw * -qy + iz * -qx - ix * -qz;
+    this.z = iz * qw + iw * -qz + ix * -qy - iy * -qx;
+    return this;
+};
+
+vec4.random = function(scale) {
+    scale = scale || 1.0;
+
+    //Not spherical; should fix this for more uniform distribution
+    this.x = (Math.random() * 2 - 1) * scale;
+    this.y = (Math.random() * 2 - 1) * scale;
+    this.z = (Math.random() * 2 - 1) * scale;
+    this.w = (Math.random() * 2 - 1) * scale;
+    return this;
+};
+
+vec4.reset = function() {
+    this.x = 0;
+    this.y = 0;
+    this.z = 0;
+    this.w = 0;
+    return this;
+};
+
+vec4.sub = vec4.subtract;
+
+vec4.mul = vec4.multiply;
+
+vec4.div = vec4.divide;
+
+vec4.dist = vec4.distance;
+
+vec4.distSq = vec4.distanceSq;
+
+vec4.len = vec4.length;
+
+vec4.lenSq = vec4.lengthSq;
+
+vec4.toString = function() {
+    return 'Vector4(' + this.x + ', ' + this.y + ', ' + this.z + ', ' + this.w + ')';
+};
+
+vec4.str = vec4.toString;
+
+module.exports = Vector4;
+},{"./common":30}],30:[function(require,module,exports){
+//common vec4 functions
+module.exports = {
+    
+/**
+ * Copies the x, y, z, w components from the specified
+ * Vector. Unlike most other operations, this function
+ * will default undefined components on `otherVec` to zero.
+ * 
+ * @method  copy
+ * @param  {otherVec} the other Vector4 to copy
+ * @return {Vector}  this, for chaining
+ */
+
+
+/**
+ * A convenience function to set the components of
+ * this vector as x, y, z, w. Falsy or undefined
+ * parameters will default to zero.
+ *
+ * You can also pass a vector object instead of
+ * individual components, to copy the object's components.
+ * 
+ * @method  set
+ * @param {Number} x the x component
+ * @param {Number} y the y component
+ * @param {Number} z the z component
+ * @param {Number} w the w component
+ * @return {Vector2}  this, for chaining
+ */
+
+/**
+ * Adds the components of the other Vector4 to
+ * this vector.
+ * 
+ * @method add
+ * @param  {Vector4} otherVec other vector, right operand
+ * @return {Vector2}  this, for chaining
+ */
+
+/**
+ * Subtracts the components of the other Vector4
+ * from this vector. Aliased as `sub()`
+ * 
+ * @method  subtract
+ * @param  {Vector4} otherVec other vector, right operand
+ * @return {Vector2}  this, for chaining
+ */
+
+/**
+ * Multiplies the components of this Vector4
+ * by a scalar amount.
+ *
+ * @method  scale
+ * @param {Number} s the scale to multiply by
+ * @return {Vector4} this, for chaining
+ */
+
+/**
+ * Returns the magnitude (length) of this vector.
+ *
+ * Aliased as `len()`
+ * 
+ * @method  length
+ * @return {Number} the length of this vector
+ */
+
+/**
+ * Returns the squared magnitude (length) of this vector.
+ *
+ * Aliased as `lenSq()`
+ * 
+ * @method  lengthSq
+ * @return {Number} the squared length of this vector
+ */
+
+/**
+ * Normalizes this vector to a unit vector.
+ * @method normalize
+ * @return {Vector4}  this, for chaining
+ */
+
+/**
+ * Returns the dot product of this vector
+ * and the specified Vector4.
+ * 
+ * @method dot
+ * @return {Number} the dot product
+ */
+    copy: function(otherVec) {
+        this.x = otherVec.x||0;
+        this.y = otherVec.y||0;
+        this.z = otherVec.z||0;
+        this.w = otherVec.w||0;
+        return this;
+    },
+
+    set: function(x, y, z, w) {
+        if (typeof x === "object") {
+            this.x = x.x||0;
+            this.y = x.y||0;
+            this.z = x.z||0;
+            this.w = x.w||0;
+        } else {
+            this.x = x||0;
+            this.y = y||0;
+            this.z = z||0;
+            this.w = w||0;
+
+        }
+        return this;
+    },
+
+    add: function(v) {
+        this.x += v.x;
+        this.y += v.y;
+        this.z += v.z;
+        this.w += v.w;
+        return this;
+    },
+
+    subtract: function(v) {
+        this.x -= v.x;
+        this.y -= v.y;
+        this.z -= v.z;
+        this.w -= v.w;
+        return this;
+    },
+
+    scale: function(s) {
+        this.x *= s;
+        this.y *= s;
+        this.z *= s;
+        this.w *= s;
+        return this;
+    },
+
+
+    length: function() {
+        var x = this.x,
+            y = this.y,
+            z = this.z,
+            w = this.w;
+        return Math.sqrt(x*x + y*y + z*z + w*w);
+    },
+
+    lengthSq: function() {
+        var x = this.x,
+            y = this.y,
+            z = this.z,
+            w = this.w;
+        return x*x + y*y + z*z + w*w;
+    },
+
+    normalize: function() {
+        var x = this.x,
+            y = this.y,
+            z = this.z,
+            w = this.w;
+        var len = x*x + y*y + z*z + w*w;
+        if (len > 0) {
+            len = 1 / Math.sqrt(len);
+            this.x = x*len;
+            this.y = y*len;
+            this.z = z*len;
+            this.w = w*len;
+        }
+        return this;
+    },
+
+    dot: function(v) {
+        return this.x * v.x + this.y * v.y + this.z * v.z + this.w * v.w;
+    },
+
+    lerp: function(v, t) {
+        var ax = this.x,
+            ay = this.y,
+            az = this.z,
+            aw = this.w;
+        t = t||0;
+        this.x = ax + t * (v.x - ax);
+        this.y = ay + t * (v.y - ay);
+        this.z = az + t * (v.z - az);
+        this.w = aw + t * (v.w - aw);
+        return this;
+    }
+};
+},{}],31:[function(require,module,exports){
+module.exports = {
+    Vector2: require('./Vector2'),
+    Vector3: require('./Vector3'),
+    Vector4: require('./Vector4'),
+    Matrix3: require('./Matrix3'),
+    Matrix4: require('./Matrix4'),
+    Quaternion: require('./Quaternion')
+};
+},{"./Matrix3":24,"./Matrix4":25,"./Quaternion":26,"./Vector2":27,"./Vector3":28,"./Vector4":29}],32:[function(require,module,exports){
 /**
  * The core kami module provides basic 2D sprite batching and 
  * asset management.
@@ -2714,10 +5190,10 @@ module.exports = NumberUtil;
  * @module kami
  */
 
-var Class = _dereq_('klasse');
-var Mesh = _dereq_('./glutils/Mesh');
+var Class = require('klasse');
+var Mesh = require('./glutils/Mesh');
 
-var colorToFloat = _dereq_('number-util').colorToFloat;
+var colorToFloat = require('number-util').colorToFloat;
 
 /** 
  * A batcher mixin composed of quads (two tris, indexed). 
@@ -3231,18 +5707,18 @@ var BaseBatch = new Class({
 
 module.exports = BaseBatch;
 
-},{"./glutils/Mesh":29,"klasse":34,"number-util":32}],24:[function(_dereq_,module,exports){
+},{"./glutils/Mesh":38,"klasse":41,"number-util":42}],33:[function(require,module,exports){
 /**
  * @module kami
  */
 
 // Requires....
-var Class         = _dereq_('klasse');
+var Class         = require('klasse');
 
-var BaseBatch = _dereq_('./BaseBatch');
+var BaseBatch = require('./BaseBatch');
 
-var Mesh          = _dereq_('./glutils/Mesh');
-var ShaderProgram = _dereq_('./glutils/ShaderProgram');
+var Mesh          = require('./glutils/Mesh');
+var ShaderProgram = require('./glutils/ShaderProgram');
 
 /**
  * A basic implementation of a batcher which draws 2D sprites.
@@ -3686,15 +6162,15 @@ SpriteBatch.DEFAULT_VERT_SHADER = [
 
 module.exports = SpriteBatch;
 
-},{"./BaseBatch":23,"./glutils/Mesh":29,"./glutils/ShaderProgram":30,"klasse":34}],25:[function(_dereq_,module,exports){
+},{"./BaseBatch":32,"./glutils/Mesh":38,"./glutils/ShaderProgram":39,"klasse":41}],34:[function(require,module,exports){
 /**
  * @module kami
  */
 
-var Class = _dereq_('klasse');
-var Signal = _dereq_('signals');
-var nextPowerOfTwo = _dereq_('number-util').nextPowerOfTwo;
-var isPowerOfTwo = _dereq_('number-util').isPowerOfTwo;
+var Class = require('klasse');
+var Signal = require('signals');
+var nextPowerOfTwo = require('number-util').nextPowerOfTwo;
+var isPowerOfTwo = require('number-util').isPowerOfTwo;
 
 var Texture = new Class({
 
@@ -4296,9 +6772,9 @@ Texture.getNumComponents = function(format) {
 };
 
 module.exports = Texture;
-},{"klasse":34,"number-util":32,"signals":33}],26:[function(_dereq_,module,exports){
-var Class = _dereq_('klasse');
-var Texture = _dereq_('./Texture');
+},{"klasse":41,"number-util":42,"signals":43}],35:[function(require,module,exports){
+var Class = require('klasse');
+var Texture = require('./Texture');
 
 //This is a GL-specific texture region, employing tangent space normalized coordinates U and V.
 //A canvas-specific region would really just be a lightweight object with { x, y, width, height }
@@ -4381,13 +6857,13 @@ var TextureRegion = new Class({
 });
 
 module.exports = TextureRegion;
-},{"./Texture":25,"klasse":34}],27:[function(_dereq_,module,exports){
+},{"./Texture":34,"klasse":41}],36:[function(require,module,exports){
 /**
  * @module kami
  */
 
-var Class = _dereq_('klasse');
-var Signal = _dereq_('signals');
+var Class = require('klasse');
+var Signal = require('signals');
 
 /**
  * A thin wrapper around WebGLRenderingContext which handles
@@ -4395,6 +6871,12 @@ var Signal = _dereq_('signals');
  * shaders and buffers). This also handles general viewport management.
  *
  * If the view is not specified, a canvas will be created.
+ *
+ * If the `view` parameter is an instanceof WebGLRenderingContext,
+ * we will use its canvas and context without fetching another through `getContext`.
+ * Passing a canvas that has already had `getContext('webgl')` called will not cause
+ * errors, but in certain debuggers (e.g. Chrome WebGL Inspector) only the latest
+ * context will be traced.
  * 
  * @class  WebGLContext
  * @constructor
@@ -4427,6 +6909,14 @@ var WebGLContext = new Class({
 		 * @type {WebGLRenderingContext}
 		 */
 		this.gl = null;
+
+		if (view && typeof window.WebGLRenderingContext !== "undefined"
+				 && view instanceof window.WebGLRenderingContext) {
+			view = view.canvas;
+			this.gl = view;
+			this.valid = true;
+			contextAttributes = undefined; //just ignore new attribs...
+		}
 
 		/**
 		 * The canvas DOM element for this context.
@@ -4504,7 +6994,8 @@ var WebGLContext = new Class({
 			this._contextRestored(ev);
 		}.bind(this));
 			
-		this._initContext();
+		if (!this.valid) //would only be valid if WebGLRenderingContext was passed 
+			this._initContext();
 
 		this.resize(this.width, this.height);
 	},
@@ -4621,9 +7112,9 @@ var WebGLContext = new Class({
 });
 
 module.exports = WebGLContext;
-},{"klasse":34,"signals":33}],28:[function(_dereq_,module,exports){
-var Class = _dereq_('klasse');
-var Texture = _dereq_('../Texture');
+},{"klasse":41,"signals":43}],37:[function(require,module,exports){
+var Class = require('klasse');
+var Texture = require('../Texture');
 
 
 var FrameBuffer = new Class({
@@ -4792,12 +7283,12 @@ var FrameBuffer = new Class({
 });
 
 module.exports = FrameBuffer;
-},{"../Texture":25,"klasse":34}],29:[function(_dereq_,module,exports){
+},{"../Texture":34,"klasse":41}],38:[function(require,module,exports){
 /**
  * @module kami
  */
 
-var Class = _dereq_('klasse');
+var Class = require('klasse');
 
 //TODO: decouple into VBO + IBO utilities 
 /**
@@ -5065,12 +7556,12 @@ Mesh.Attrib = new Class({
 
 
 module.exports = Mesh;
-},{"klasse":34}],30:[function(_dereq_,module,exports){
+},{"klasse":41}],39:[function(require,module,exports){
 /**
  * @module kami
  */
 
-var Class = _dereq_('klasse');
+var Class = require('klasse');
 
 
 var ShaderProgram = new Class({
@@ -5563,25 +8054,123 @@ ShaderProgram.COLOR_ATTRIBUTE = "Color";
 ShaderProgram.TEXCOORD_ATTRIBUTE = "TexCoord";
 
 module.exports = ShaderProgram;
-},{"klasse":34}],31:[function(_dereq_,module,exports){
+},{"klasse":41}],40:[function(require,module,exports){
 /**
   Auto-generated Kami index file.
   Created on 2014-03-02.
 */
 module.exports = {
     //core classes
-    'BaseBatch':       _dereq_('./BaseBatch.js'),
-    'SpriteBatch':     _dereq_('./SpriteBatch.js'),
-    'Texture':         _dereq_('./Texture.js'),
-    'TextureRegion':   _dereq_('./TextureRegion.js'),
-    'WebGLContext':    _dereq_('./WebGLContext.js'),
-    'FrameBuffer':     _dereq_('./glutils/FrameBuffer.js'),
-    'Mesh':            _dereq_('./glutils/Mesh.js'),
-    'ShaderProgram':   _dereq_('./glutils/ShaderProgram.js')
+    'BaseBatch':       require('./BaseBatch.js'),
+    'SpriteBatch':     require('./SpriteBatch.js'),
+    'Texture':         require('./Texture.js'),
+    'TextureRegion':   require('./TextureRegion.js'),
+    'WebGLContext':    require('./WebGLContext.js'),
+    'FrameBuffer':     require('./glutils/FrameBuffer.js'),
+    'Mesh':            require('./glutils/Mesh.js'),
+    'ShaderProgram':   require('./glutils/ShaderProgram.js')
 };
-},{"./BaseBatch.js":23,"./SpriteBatch.js":24,"./Texture.js":25,"./TextureRegion.js":26,"./WebGLContext.js":27,"./glutils/FrameBuffer.js":28,"./glutils/Mesh.js":29,"./glutils/ShaderProgram.js":30}],32:[function(_dereq_,module,exports){
-module.exports=_dereq_(22)
-},{}],33:[function(_dereq_,module,exports){
+},{"./BaseBatch.js":32,"./SpriteBatch.js":33,"./Texture.js":34,"./TextureRegion.js":35,"./WebGLContext.js":36,"./glutils/FrameBuffer.js":37,"./glutils/Mesh.js":38,"./glutils/ShaderProgram.js":39}],41:[function(require,module,exports){
+module.exports=require(22)
+},{}],42:[function(require,module,exports){
+var int8 = new Int8Array(4);
+var int32 = new Int32Array(int8.buffer, 0, 1);
+var float32 = new Float32Array(int8.buffer, 0, 1);
+
+/**
+ * A singleton for number utilities. 
+ * @class NumberUtil
+ */
+var NumberUtil = function() {
+
+};
+
+
+/**
+ * Returns a float representation of the given int bits. ArrayBuffer
+ * is used for the conversion.
+ *
+ * @method  intBitsToFloat
+ * @static
+ * @param  {Number} i the int to cast
+ * @return {Number}   the float
+ */
+NumberUtil.intBitsToFloat = function(i) {
+	int32[0] = i;
+	return float32[0];
+};
+
+/**
+ * Returns the int bits from the given float. ArrayBuffer is used
+ * for the conversion.
+ *
+ * @method  floatToIntBits
+ * @static
+ * @param  {Number} f the float to cast
+ * @return {Number}   the int bits
+ */
+NumberUtil.floatToIntBits = function(f) {
+	float32[0] = f;
+	return int32[0];
+};
+
+/**
+ * Encodes ABGR int as a float, with slight precision loss.
+ *
+ * @method  intToFloatColor
+ * @static
+ * @param {Number} value an ABGR packed integer
+ */
+NumberUtil.intToFloatColor = function(value) {
+	return NumberUtil.intBitsToFloat( value & 0xfeffffff );
+};
+
+/**
+ * Returns a float encoded ABGR value from the given RGBA
+ * bytes (0 - 255). Useful for saving bandwidth in vertex data.
+ *
+ * @method  colorToFloat
+ * @static
+ * @param {Number} r the Red byte (0 - 255)
+ * @param {Number} g the Green byte (0 - 255)
+ * @param {Number} b the Blue byte (0 - 255)
+ * @param {Number} a the Alpha byte (0 - 255)
+ * @return {Float32}  a Float32 of the RGBA color
+ */
+NumberUtil.colorToFloat = function(r, g, b, a) {
+	var bits = (a << 24 | b << 16 | g << 8 | r);
+	return NumberUtil.intToFloatColor(bits);
+};
+
+/**
+ * Returns true if the number is a power-of-two.
+ *
+ * @method  isPowerOfTwo
+ * @param  {Number}  n the number to test
+ * @return {Boolean}   true if power-of-two
+ */
+NumberUtil.isPowerOfTwo = function(n) {
+	return (n & (n - 1)) == 0;
+};
+
+/**
+ * Returns the next highest power-of-two from the specified number. 
+ * 
+ * @param  {Number} n the number to test
+ * @return {Number}   the next highest power of two
+ */
+NumberUtil.nextPowerOfTwo = function(n) {
+	n--;
+	n |= n >> 1;
+	n |= n >> 2;
+	n |= n >> 4;
+	n |= n >> 8;
+	n |= n >> 16;
+	return n+1;
+};
+
+module.exports = NumberUtil;
+},{}],43:[function(require,module,exports){
 /*jslint onevar:true, undef:true, newcap:true, regexp:true, bitwise:true, maxerr:50, indent:4, white:false, nomen:false, plusplus:false */
 /*global define:false, require:false, exports:false, module:false, signals:false */
 
@@ -6028,192 +8617,11 @@ module.exports=_dereq_(22)
 
 }(this));
 
-},{}],34:[function(_dereq_,module,exports){
-function hasGetterOrSetter(def) {
-	return (!!def.get && typeof def.get === "function") || (!!def.set && typeof def.set === "function");
-}
-
-function getProperty(definition, k, isClassDescriptor) {
-	//This may be a lightweight object, OR it might be a property
-	//that was defined previously.
-	
-	//For simple class descriptors we can just assume its NOT previously defined.
-	var def = isClassDescriptor 
-				? definition[k] 
-				: Object.getOwnPropertyDescriptor(definition, k);
-
-	if (!isClassDescriptor && def.value && typeof def.value === "object") {
-		def = def.value;
-	}
-
-
-	//This might be a regular property, or it may be a getter/setter the user defined in a class.
-	if ( def && hasGetterOrSetter(def) ) {
-		if (typeof def.enumerable === "undefined")
-			def.enumerable = true;
-		if (typeof def.configurable === "undefined")
-			def.configurable = true;
-		return def;
-	} else {
-		return false;
-	}
-}
-
-function hasNonConfigurable(obj, k) {
-	var prop = Object.getOwnPropertyDescriptor(obj, k);
-	if (!prop)
-		return false;
-
-	if (prop.value && typeof prop.value === "object")
-		prop = prop.value;
-
-	if (prop.configurable === false) 
-		return true;
-
-	return false;
-}
-
-//TODO: On create, 
-//		On mixin, 
-
-function extend(ctor, definition, isClassDescriptor, extend) {
-	for (var k in definition) {
-		if (!definition.hasOwnProperty(k))
-			continue;
-
-		var def = getProperty(definition, k, isClassDescriptor);
-
-		if (def !== false) {
-			//If Extends is used, we will check its prototype to see if 
-			//the final variable exists.
-			
-			var parent = extend || ctor;
-			if (hasNonConfigurable(parent.prototype, k)) {
-
-				//just skip the final property
-				if (Class.ignoreFinals)
-					continue;
-
-				//We cannot re-define a property that is configurable=false.
-				//So we will consider them final and throw an error. This is by
-				//default so it is clear to the developer what is happening.
-				//You can set ignoreFinals to true if you need to extend a class
-				//which has configurable=false; it will simply not re-define final properties.
-				throw new Error("cannot override final property '"+k
-							+"', set Class.ignoreFinals = true to skip");
-			}
-
-			Object.defineProperty(ctor.prototype, k, def);
-		} else {
-			ctor.prototype[k] = definition[k];
-		}
-
-	}
-}
-
-/**
- */
-function mixin(myClass, mixins) {
-	if (!mixins)
-		return;
-
-	if (!Array.isArray(mixins))
-		mixins = [mixins];
-
-	for (var i=0; i<mixins.length; i++) {
-		extend(myClass, mixins[i].prototype || mixins[i]);
-	}
-}
-
-/**
- * Creates a new class with the given descriptor.
- * The constructor, defined by the name `initialize`,
- * is an optional function. If unspecified, an anonymous
- * function will be used which calls the parent class (if
- * one exists). 
- *
- * You can also use `Extends` and `Mixins` to provide subclassing
- * and inheritance.
- *
- * @class  Class
- * @constructor
- * @param {Object} definition a dictionary of functions for the class
- * @example
- *
- * 		var MyClass = new Class({
- * 		
- * 			initialize: function() {
- * 				this.foo = 2.0;
- * 			},
- *
- * 			bar: function() {
- * 				return this.foo + 5;
- * 			}
- * 		});
- */
-function Class(definition) {
-	if (!definition)
-		definition = {};
-
-	//The variable name here dictates what we see in Chrome debugger
-	var initialize;
-	var Extends;
-
-	if (definition.initialize) {
-		if (typeof definition.initialize !== "function")
-			throw new Error("initialize must be a function");
-		initialize = definition.initialize;
-
-		//Usually we should avoid "delete" in V8 at all costs.
-		//However, its unlikely to make any performance difference
-		//here since we only call this on class creation (i.e. not object creation).
-		delete definition.initialize;
-	} else {
-		if (definition.Extends) {
-			var base = definition.Extends;
-			initialize = function () {
-				base.apply(this, arguments);
-			}; 
-		} else {
-			initialize = function () {}; 
-		}
-	}
-
-	if (definition.Extends) {
-		initialize.prototype = Object.create(definition.Extends.prototype);
-		initialize.prototype.constructor = initialize;
-		//for getOwnPropertyDescriptor to work, we need to act
-		//directly on the Extends (or Mixin)
-		Extends = definition.Extends;
-		delete definition.Extends;
-	} else {
-		initialize.prototype.constructor = initialize;
-	}
-
-	//Grab the mixins, if they are specified...
-	var mixins = null;
-	if (definition.Mixins) {
-		mixins = definition.Mixins;
-		delete definition.Mixins;
-	}
-
-	//First, mixin if we can.
-	mixin(initialize, mixins);
-
-	//Now we grab the actual definition which defines the overrides.
-	extend(initialize, definition, true, Extends);
-
-	return initialize;
-};
-
-Class.extend = extend;
-Class.mixin = mixin;
-Class.ignoreFinals = false;
-
-module.exports = Class;
-},{}],35:[function(_dereq_,module,exports){
+},{}],44:[function(require,module,exports){
+module.exports=require(22)
+},{}],45:[function(require,module,exports){
 module.exports={"version": "1.3.3"}
-},{}],36:[function(_dereq_,module,exports){
+},{}],46:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -6360,7 +8768,7 @@ module.exports = AdvancingFront;
 module.exports.Node = Node;
 
 
-},{}],37:[function(_dereq_,module,exports){
+},{}],47:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -6384,7 +8792,7 @@ module.exports.Node = Node;
  * easier to keep the 2 versions in sync.
  */
 
-var xy = _dereq_('./xy');
+var xy = require('./xy');
 
 // ------------------------------------------------------------------------Point
 /**
@@ -6597,7 +9005,7 @@ Point.dot = function(a, b) {
 
 module.exports = Point;
 
-},{"./xy":44}],38:[function(_dereq_,module,exports){
+},{"./xy":54}],48:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -6616,7 +9024,7 @@ module.exports = Point;
  * Class added in the JavaScript version (was not present in the c++ version)
  */
 
-var xy = _dereq_('./xy');
+var xy = require('./xy');
 
 /**
  * Custom exception class to indicate invalid Point values
@@ -6637,9 +9045,8 @@ PointError.prototype.constructor = PointError;
 
 module.exports = PointError;
 
-},{"./xy":44}],39:[function(_dereq_,module,exports){
-(function (global){
-/*
+},{"./xy":54}],49:[function(require,module,exports){
+var global=typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {};/*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
  * 
@@ -6692,21 +9099,20 @@ exports.noConflict = function() {
     return exports;
 };
 
-exports.VERSION = _dereq_('../dist/version.json').version;
+exports.VERSION = require('../dist/version.json').version;
 
-exports.PointError = _dereq_('./pointerror');
-exports.Point = _dereq_('./point');
-exports.Triangle = _dereq_('./triangle');
-exports.SweepContext = _dereq_('./sweepcontext');
+exports.PointError = require('./pointerror');
+exports.Point = require('./point');
+exports.Triangle = require('./triangle');
+exports.SweepContext = require('./sweepcontext');
 
 
 // Backward compatibility
-var sweep = _dereq_('./sweep');
+var sweep = require('./sweep');
 exports.triangulate = sweep.triangulate;
 exports.sweep = {Triangulate: sweep.triangulate};
 
-}).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"../dist/version.json":35,"./point":37,"./pointerror":38,"./sweep":40,"./sweepcontext":41,"./triangle":42}],40:[function(_dereq_,module,exports){
+},{"../dist/version.json":45,"./point":47,"./pointerror":48,"./sweep":50,"./sweepcontext":51,"./triangle":52}],50:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -6736,14 +9142,14 @@ exports.sweep = {Triangulate: sweep.triangulate};
  * functions could be declared as methods on the SweepContext object.
  */
 
-var PointError = _dereq_('./pointerror');
-var Triangle = _dereq_('./triangle');
-var Node = _dereq_('./advancingfront').Node;
+var PointError = require('./pointerror');
+var Triangle = require('./triangle');
+var Node = require('./advancingfront').Node;
 
 
 // ------------------------------------------------------------------------utils
 
-var utils = _dereq_('./utils');
+var utils = require('./utils');
 
 var PI_3div4 = 3 * Math.PI / 4;
 var PI_div2 = Math.PI / 2;
@@ -7559,7 +9965,7 @@ function flipScanEdgeEvent(tcx, ep, eq, flip_triangle, t, p) {
 
 exports.triangulate = triangulate;
 
-},{"./advancingfront":36,"./pointerror":38,"./triangle":42,"./utils":43}],41:[function(_dereq_,module,exports){
+},{"./advancingfront":46,"./pointerror":48,"./triangle":52,"./utils":53}],51:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -7585,11 +9991,11 @@ exports.triangulate = triangulate;
  * easier to keep the 2 versions in sync.
  */
 
-var PointError = _dereq_('./pointerror');
-var Point = _dereq_('./point');
-var Triangle = _dereq_('./triangle');
-var sweep = _dereq_('./sweep');
-var AdvancingFront = _dereq_('./advancingfront');
+var PointError = require('./pointerror');
+var Point = require('./point');
+var Triangle = require('./triangle');
+var sweep = require('./sweep');
+var AdvancingFront = require('./advancingfront');
 var Node = AdvancingFront.Node;
 
 
@@ -7919,7 +10325,7 @@ SweepContext.prototype.meshClean = function(triangle) {
 
 module.exports = SweepContext;
 
-},{"./advancingfront":36,"./point":37,"./pointerror":38,"./sweep":40,"./triangle":42}],42:[function(_dereq_,module,exports){
+},{"./advancingfront":46,"./point":47,"./pointerror":48,"./sweep":50,"./triangle":52}],52:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -7945,7 +10351,7 @@ module.exports = SweepContext;
  * easier to keep the 2 versions in sync.
  */
 
-var xy = _dereq_("./xy");
+var xy = require("./xy");
 
 
 // ---------------------------------------------------------------------Triangle
@@ -8358,7 +10764,7 @@ Triangle.prototype.markConstrainedEdgeByPoints = function(p, q) {
 
 module.exports = Triangle;
 
-},{"./xy":44}],43:[function(_dereq_,module,exports){
+},{"./xy":54}],53:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -8441,7 +10847,7 @@ module.exports = {
     inScanArea: inScanArea
 };
 
-},{}],44:[function(_dereq_,module,exports){
+},{}],54:[function(require,module,exports){
 /*
  * Poly2Tri Copyright (c) 2009-2013, Poly2Tri Contributors
  * http://code.google.com/p/poly2tri/
@@ -8508,10 +10914,10 @@ module.exports = {
     equals: equals
 };
 
-},{}],45:[function(_dereq_,module,exports){
-var Vector2 = _dereq_('vecmath').Vector2;
-var Class = _dereq_('klasse');
-var lerp = _dereq_('interpolation').lerp;
+},{}],55:[function(require,module,exports){
+var Vector2 = require('vecmath').Vector2;
+var Class = require('klasse');
+var lerp = require('interpolation').lerp;
 
 function distanceTo(x1, y1, x2, y2) {
     var dx = x2-x1;
@@ -8760,2113 +11166,31 @@ var Shape = new Class({
 });
 
 module.exports = Shape;
-},{"interpolation":19,"klasse":34,"vecmath":53}],46:[function(_dereq_,module,exports){
-var ARRAY_TYPE = typeof Float32Array !== "undefined" ? Float32Array : Array;
-
-function Matrix3(m) {
-    this.val = new ARRAY_TYPE(9);
-
-    if (m) { //assume Matrix3 with val
-        this.copy(m);
-    } else { //default to identity
-        this.idt();
-    }
-}
-
-var mat3 = Matrix3.prototype;
-
-mat3.clone = function() {
-    return new Matrix3(this);
-};
-
-mat3.set = function(otherMat) {
-    return this.copy(otherMat);
-};
-
-mat3.copy = function(otherMat) {
-    var out = this.val,
-        a = otherMat.val; 
-    out[0] = a[0];
-    out[1] = a[1];
-    out[2] = a[2];
-    out[3] = a[3];
-    out[4] = a[4];
-    out[5] = a[5];
-    out[6] = a[6];
-    out[7] = a[7];
-    out[8] = a[8];
-    return this;
-};
-
-mat3.fromMat4 = function(m) {
-    var a = m.val,
-        out = this.val;
-    out[0] = a[0];
-    out[1] = a[1];
-    out[2] = a[2];
-    out[3] = a[4];
-    out[4] = a[5];
-    out[5] = a[6];
-    out[6] = a[8];
-    out[7] = a[9];
-    out[8] = a[10];
-    return this;
-};
-
-mat3.fromArray = function(a) {
-    var out = this.val;
-    out[0] = a[0];
-    out[1] = a[1];
-    out[2] = a[2];
-    out[3] = a[3];
-    out[4] = a[4];
-    out[5] = a[5];
-    out[6] = a[6];
-    out[7] = a[7];
-    out[8] = a[8];
-    return this;
-};
-
-mat3.identity = function() {
-    var out = this.val;
-    out[0] = 1;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = 1;
-    out[5] = 0;
-    out[6] = 0;
-    out[7] = 0;
-    out[8] = 1;
-    return this;
-};
-
-mat3.transpose = function() {
-    var a = this.val,
-        a01 = a[1], 
-        a02 = a[2], 
-        a12 = a[5];
-    a[1] = a[3];
-    a[2] = a[6];
-    a[3] = a01;
-    a[5] = a[7];
-    a[6] = a02;
-    a[7] = a12;
-    return this;
-};
-
-mat3.invert = function() {
-    var a = this.val,
-        a00 = a[0], a01 = a[1], a02 = a[2],
-        a10 = a[3], a11 = a[4], a12 = a[5],
-        a20 = a[6], a21 = a[7], a22 = a[8],
-
-        b01 = a22 * a11 - a12 * a21,
-        b11 = -a22 * a10 + a12 * a20,
-        b21 = a21 * a10 - a11 * a20,
-
-        // Calculate the determinant
-        det = a00 * b01 + a01 * b11 + a02 * b21;
-
-    if (!det) { 
-        return null; 
-    }
-    det = 1.0 / det;
-
-    a[0] = b01 * det;
-    a[1] = (-a22 * a01 + a02 * a21) * det;
-    a[2] = (a12 * a01 - a02 * a11) * det;
-    a[3] = b11 * det;
-    a[4] = (a22 * a00 - a02 * a20) * det;
-    a[5] = (-a12 * a00 + a02 * a10) * det;
-    a[6] = b21 * det;
-    a[7] = (-a21 * a00 + a01 * a20) * det;
-    a[8] = (a11 * a00 - a01 * a10) * det;
-    return this;
-};
-
-mat3.adjoint = function() {
-    var a = this.val,
-        a00 = a[0], a01 = a[1], a02 = a[2],
-        a10 = a[3], a11 = a[4], a12 = a[5],
-        a20 = a[6], a21 = a[7], a22 = a[8];
-
-    a[0] = (a11 * a22 - a12 * a21);
-    a[1] = (a02 * a21 - a01 * a22);
-    a[2] = (a01 * a12 - a02 * a11);
-    a[3] = (a12 * a20 - a10 * a22);
-    a[4] = (a00 * a22 - a02 * a20);
-    a[5] = (a02 * a10 - a00 * a12);
-    a[6] = (a10 * a21 - a11 * a20);
-    a[7] = (a01 * a20 - a00 * a21);
-    a[8] = (a00 * a11 - a01 * a10);
-    return this;
-};
-
-mat3.determinant = function() {
-    var a = this.val,
-        a00 = a[0], a01 = a[1], a02 = a[2],
-        a10 = a[3], a11 = a[4], a12 = a[5],
-        a20 = a[6], a21 = a[7], a22 = a[8];
-
-    return a00 * (a22 * a11 - a12 * a21) + a01 * (-a22 * a10 + a12 * a20) + a02 * (a21 * a10 - a11 * a20);
-};
-
-mat3.multiply = function(otherMat) {
-    var a = this.val,
-        b = otherMat.val,
-        a00 = a[0], a01 = a[1], a02 = a[2],
-        a10 = a[3], a11 = a[4], a12 = a[5],
-        a20 = a[6], a21 = a[7], a22 = a[8],
-
-        b00 = b[0], b01 = b[1], b02 = b[2],
-        b10 = b[3], b11 = b[4], b12 = b[5],
-        b20 = b[6], b21 = b[7], b22 = b[8];
-
-    a[0] = b00 * a00 + b01 * a10 + b02 * a20;
-    a[1] = b00 * a01 + b01 * a11 + b02 * a21;
-    a[2] = b00 * a02 + b01 * a12 + b02 * a22;
-
-    a[3] = b10 * a00 + b11 * a10 + b12 * a20;
-    a[4] = b10 * a01 + b11 * a11 + b12 * a21;
-    a[5] = b10 * a02 + b11 * a12 + b12 * a22;
-
-    a[6] = b20 * a00 + b21 * a10 + b22 * a20;
-    a[7] = b20 * a01 + b21 * a11 + b22 * a21;
-    a[8] = b20 * a02 + b21 * a12 + b22 * a22;
-    return this;
-};
-
-mat3.translate = function(v) {
-    var a = this.val,
-        x = v.x, y = v.y;
-    a[6] = x * a[0] + y * a[3] + a[6];
-    a[7] = x * a[1] + y * a[4] + a[7];
-    a[8] = x * a[2] + y * a[5] + a[8];
-    return this;
-};
-
-mat3.rotate = function(rad) {
-    var a = this.val,
-        a00 = a[0], a01 = a[1], a02 = a[2],
-        a10 = a[3], a11 = a[4], a12 = a[5],
-
-        s = Math.sin(rad),
-        c = Math.cos(rad);
-
-    a[0] = c * a00 + s * a10;
-    a[1] = c * a01 + s * a11;
-    a[2] = c * a02 + s * a12;
-
-    a[3] = c * a10 - s * a00;
-    a[4] = c * a11 - s * a01;
-    a[5] = c * a12 - s * a02;
-    return this;
-};
-
-mat3.scale = function(v) {
-    var a = this.val,
-        x = v.x, 
-        y = v.y;
-
-    a[0] = x * a[0];
-    a[1] = x * a[1];
-    a[2] = x * a[2];
-
-    a[3] = y * a[3];
-    a[4] = y * a[4];
-    a[5] = y * a[5];
-    return this;
-};
-
-mat3.fromQuat = function(q) {
-    var x = q.x, y = q.y, z = q.z, w = q.w,
-        x2 = x + x,
-        y2 = y + y,
-        z2 = z + z,
-
-        xx = x * x2,
-        xy = x * y2,
-        xz = x * z2,
-        yy = y * y2,
-        yz = y * z2,
-        zz = z * z2,
-        wx = w * x2,
-        wy = w * y2,
-        wz = w * z2,
-
-        out = this.val;
-
-    out[0] = 1 - (yy + zz);
-    out[3] = xy + wz;
-    out[6] = xz - wy;
-
-    out[1] = xy - wz;
-    out[4] = 1 - (xx + zz);
-    out[7] = yz + wx;
-
-    out[2] = xz + wy;
-    out[5] = yz - wx;
-    out[8] = 1 - (xx + yy);
-    return this;
-};
-
-mat3.normalFromMat4 = function(m) {
-    var a = m.val,
-        out = this.val,
-
-        a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3],
-        a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
-        a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11],
-        a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15],
-
-        b00 = a00 * a11 - a01 * a10,
-        b01 = a00 * a12 - a02 * a10,
-        b02 = a00 * a13 - a03 * a10,
-        b03 = a01 * a12 - a02 * a11,
-        b04 = a01 * a13 - a03 * a11,
-        b05 = a02 * a13 - a03 * a12,
-        b06 = a20 * a31 - a21 * a30,
-        b07 = a20 * a32 - a22 * a30,
-        b08 = a20 * a33 - a23 * a30,
-        b09 = a21 * a32 - a22 * a31,
-        b10 = a21 * a33 - a23 * a31,
-        b11 = a22 * a33 - a23 * a32,
-
-        // Calculate the determinant
-        det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
-
-    if (!det) { 
-        return null; 
-    }
-    det = 1.0 / det;
-
-    out[0] = (a11 * b11 - a12 * b10 + a13 * b09) * det;
-    out[1] = (a12 * b08 - a10 * b11 - a13 * b07) * det;
-    out[2] = (a10 * b10 - a11 * b08 + a13 * b06) * det;
-
-    out[3] = (a02 * b10 - a01 * b11 - a03 * b09) * det;
-    out[4] = (a00 * b11 - a02 * b08 + a03 * b07) * det;
-    out[5] = (a01 * b08 - a00 * b10 - a03 * b06) * det;
-
-    out[6] = (a31 * b05 - a32 * b04 + a33 * b03) * det;
-    out[7] = (a32 * b02 - a30 * b05 - a33 * b01) * det;
-    out[8] = (a30 * b04 - a31 * b02 + a33 * b00) * det;
-    return this;
-};
-
-mat3.mul = mat3.multiply;
-
-mat3.idt = mat3.identity;
-
-//This is handy for Pool utilities, to "reset" a
-//shared object to its default state
-mat3.reset = mat3.idt;
-
-mat3.toString = function() {
-    var a = this.val;
-    return 'Matrix3(' + a[0] + ', ' + a[1] + ', ' + a[2] + ', ' + 
-                    a[3] + ', ' + a[4] + ', ' + a[5] + ', ' + 
-                    a[6] + ', ' + a[7] + ', ' + a[8] + ')';
-};
-
-mat3.str = mat3.toString;
-
-module.exports = Matrix3;
-},{}],47:[function(_dereq_,module,exports){
-var ARRAY_TYPE = typeof Float32Array !== "undefined" ? Float32Array : Array;
-var EPSILON = 0.000001;
-
-function Matrix4(m) {
-    this.val = new ARRAY_TYPE(16);
-
-    if (m) { //assume Matrix4 with val
-        this.copy(m);
-    } else { //default to identity
-        this.idt();
-    }
-}
-
-var mat4 = Matrix4.prototype;
-
-mat4.clone = function() {
-    return new Matrix4(this);
-};
-
-mat4.set = function(otherMat) {
-    return this.copy(otherMat);
-};
-
-mat4.copy = function(otherMat) {
-    var out = this.val,
-        a = otherMat.val; 
-    out[0] = a[0];
-    out[1] = a[1];
-    out[2] = a[2];
-    out[3] = a[3];
-    out[4] = a[4];
-    out[5] = a[5];
-    out[6] = a[6];
-    out[7] = a[7];
-    out[8] = a[8];
-    out[9] = a[9];
-    out[10] = a[10];
-    out[11] = a[11];
-    out[12] = a[12];
-    out[13] = a[13];
-    out[14] = a[14];
-    out[15] = a[15];
-    return this;
-};
-
-mat4.fromArray = function(a) {
-    var out = this.val;
-    out[0] = a[0];
-    out[1] = a[1];
-    out[2] = a[2];
-    out[3] = a[3];
-    out[4] = a[4];
-    out[5] = a[5];
-    out[6] = a[6];
-    out[7] = a[7];
-    out[8] = a[8];
-    out[9] = a[9];
-    out[10] = a[10];
-    out[11] = a[11];
-    out[12] = a[12];
-    out[13] = a[13];
-    out[14] = a[14];
-    out[15] = a[15];
-    return this;
-};
-
-mat4.identity = function() {
-    var out = this.val;
-    out[0] = 1;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = 0;
-    out[5] = 1;
-    out[6] = 0;
-    out[7] = 0;
-    out[8] = 0;
-    out[9] = 0;
-    out[10] = 1;
-    out[11] = 0;
-    out[12] = 0;
-    out[13] = 0;
-    out[14] = 0;
-    out[15] = 1;
-    return this;
-};
-
-mat4.transpose = function() {
-    var a = this.val,
-        a01 = a[1], a02 = a[2], a03 = a[3],
-        a12 = a[6], a13 = a[7],
-        a23 = a[11];
-
-    a[1] = a[4];
-    a[2] = a[8];
-    a[3] = a[12];
-    a[4] = a01;
-    a[6] = a[9];
-    a[7] = a[13];
-    a[8] = a02;
-    a[9] = a12;
-    a[11] = a[14];
-    a[12] = a03;
-    a[13] = a13;
-    a[14] = a23;
-    return this;
-};
-
-mat4.invert = function() {
-    var a = this.val,
-        a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3],
-        a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
-        a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11],
-        a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15],
-
-        b00 = a00 * a11 - a01 * a10,
-        b01 = a00 * a12 - a02 * a10,
-        b02 = a00 * a13 - a03 * a10,
-        b03 = a01 * a12 - a02 * a11,
-        b04 = a01 * a13 - a03 * a11,
-        b05 = a02 * a13 - a03 * a12,
-        b06 = a20 * a31 - a21 * a30,
-        b07 = a20 * a32 - a22 * a30,
-        b08 = a20 * a33 - a23 * a30,
-        b09 = a21 * a32 - a22 * a31,
-        b10 = a21 * a33 - a23 * a31,
-        b11 = a22 * a33 - a23 * a32,
-
-        // Calculate the determinant
-        det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
-
-    if (!det) { 
-        return null; 
-    }
-    det = 1.0 / det;
-
-    a[0] = (a11 * b11 - a12 * b10 + a13 * b09) * det;
-    a[1] = (a02 * b10 - a01 * b11 - a03 * b09) * det;
-    a[2] = (a31 * b05 - a32 * b04 + a33 * b03) * det;
-    a[3] = (a22 * b04 - a21 * b05 - a23 * b03) * det;
-    a[4] = (a12 * b08 - a10 * b11 - a13 * b07) * det;
-    a[5] = (a00 * b11 - a02 * b08 + a03 * b07) * det;
-    a[6] = (a32 * b02 - a30 * b05 - a33 * b01) * det;
-    a[7] = (a20 * b05 - a22 * b02 + a23 * b01) * det;
-    a[8] = (a10 * b10 - a11 * b08 + a13 * b06) * det;
-    a[9] = (a01 * b08 - a00 * b10 - a03 * b06) * det;
-    a[10] = (a30 * b04 - a31 * b02 + a33 * b00) * det;
-    a[11] = (a21 * b02 - a20 * b04 - a23 * b00) * det;
-    a[12] = (a11 * b07 - a10 * b09 - a12 * b06) * det;
-    a[13] = (a00 * b09 - a01 * b07 + a02 * b06) * det;
-    a[14] = (a31 * b01 - a30 * b03 - a32 * b00) * det;
-    a[15] = (a20 * b03 - a21 * b01 + a22 * b00) * det;
-    return this;
-};
-
-mat4.adjoint = function() {
-    var a = this.val,
-        a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3],
-        a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
-        a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11],
-        a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
-
-    a[0]  =  (a11 * (a22 * a33 - a23 * a32) - a21 * (a12 * a33 - a13 * a32) + a31 * (a12 * a23 - a13 * a22));
-    a[1]  = -(a01 * (a22 * a33 - a23 * a32) - a21 * (a02 * a33 - a03 * a32) + a31 * (a02 * a23 - a03 * a22));
-    a[2]  =  (a01 * (a12 * a33 - a13 * a32) - a11 * (a02 * a33 - a03 * a32) + a31 * (a02 * a13 - a03 * a12));
-    a[3]  = -(a01 * (a12 * a23 - a13 * a22) - a11 * (a02 * a23 - a03 * a22) + a21 * (a02 * a13 - a03 * a12));
-    a[4]  = -(a10 * (a22 * a33 - a23 * a32) - a20 * (a12 * a33 - a13 * a32) + a30 * (a12 * a23 - a13 * a22));
-    a[5]  =  (a00 * (a22 * a33 - a23 * a32) - a20 * (a02 * a33 - a03 * a32) + a30 * (a02 * a23 - a03 * a22));
-    a[6]  = -(a00 * (a12 * a33 - a13 * a32) - a10 * (a02 * a33 - a03 * a32) + a30 * (a02 * a13 - a03 * a12));
-    a[7]  =  (a00 * (a12 * a23 - a13 * a22) - a10 * (a02 * a23 - a03 * a22) + a20 * (a02 * a13 - a03 * a12));
-    a[8]  =  (a10 * (a21 * a33 - a23 * a31) - a20 * (a11 * a33 - a13 * a31) + a30 * (a11 * a23 - a13 * a21));
-    a[9]  = -(a00 * (a21 * a33 - a23 * a31) - a20 * (a01 * a33 - a03 * a31) + a30 * (a01 * a23 - a03 * a21));
-    a[10] =  (a00 * (a11 * a33 - a13 * a31) - a10 * (a01 * a33 - a03 * a31) + a30 * (a01 * a13 - a03 * a11));
-    a[11] = -(a00 * (a11 * a23 - a13 * a21) - a10 * (a01 * a23 - a03 * a21) + a20 * (a01 * a13 - a03 * a11));
-    a[12] = -(a10 * (a21 * a32 - a22 * a31) - a20 * (a11 * a32 - a12 * a31) + a30 * (a11 * a22 - a12 * a21));
-    a[13] =  (a00 * (a21 * a32 - a22 * a31) - a20 * (a01 * a32 - a02 * a31) + a30 * (a01 * a22 - a02 * a21));
-    a[14] = -(a00 * (a11 * a32 - a12 * a31) - a10 * (a01 * a32 - a02 * a31) + a30 * (a01 * a12 - a02 * a11));
-    a[15] =  (a00 * (a11 * a22 - a12 * a21) - a10 * (a01 * a22 - a02 * a21) + a20 * (a01 * a12 - a02 * a11));
-    return this;
-};
-
-mat4.determinant = function () {
-    var a = this.val,
-        a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3],
-        a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
-        a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11],
-        a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15],
-
-        b00 = a00 * a11 - a01 * a10,
-        b01 = a00 * a12 - a02 * a10,
-        b02 = a00 * a13 - a03 * a10,
-        b03 = a01 * a12 - a02 * a11,
-        b04 = a01 * a13 - a03 * a11,
-        b05 = a02 * a13 - a03 * a12,
-        b06 = a20 * a31 - a21 * a30,
-        b07 = a20 * a32 - a22 * a30,
-        b08 = a20 * a33 - a23 * a30,
-        b09 = a21 * a32 - a22 * a31,
-        b10 = a21 * a33 - a23 * a31,
-        b11 = a22 * a33 - a23 * a32;
-
-    // Calculate the determinant
-    return b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
-};
-
-mat4.multiply = function(otherMat) {
-    var a = this.val,
-        b = otherMat.val,
-        a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3],
-        a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
-        a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11],
-        a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
-
-    // Cache only the current line of the second matrix
-    var b0  = b[0], b1 = b[1], b2 = b[2], b3 = b[3];  
-    a[0] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
-    a[1] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
-    a[2] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
-    a[3] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
-
-    b0 = b[4]; b1 = b[5]; b2 = b[6]; b3 = b[7];
-    a[4] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
-    a[5] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
-    a[6] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
-    a[7] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
-
-    b0 = b[8]; b1 = b[9]; b2 = b[10]; b3 = b[11];
-    a[8] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
-    a[9] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
-    a[10] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
-    a[11] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
-
-    b0 = b[12]; b1 = b[13]; b2 = b[14]; b3 = b[15];
-    a[12] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
-    a[13] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
-    a[14] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
-    a[15] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
-    return this;
-};
-
-mat4.translate = function(v) {
-    var x = v.x, y = v.y, z = v.z,
-        a = this.val;
-    a[12] = a[0] * x + a[4] * y + a[8] * z + a[12];
-    a[13] = a[1] * x + a[5] * y + a[9] * z + a[13];
-    a[14] = a[2] * x + a[6] * y + a[10] * z + a[14];
-    a[15] = a[3] * x + a[7] * y + a[11] * z + a[15];
-    return this;
-};
-
-mat4.scale = function(v) {
-    var x = v.x, y = v.y, z = v.z, a = this.val;
-
-    a[0] = a[0] * x;
-    a[1] = a[1] * x;
-    a[2] = a[2] * x;
-    a[3] = a[3] * x;
-    a[4] = a[4] * y;
-    a[5] = a[5] * y;
-    a[6] = a[6] * y;
-    a[7] = a[7] * y;
-    a[8] = a[8] * z;
-    a[9] = a[9] * z;
-    a[10] = a[10] * z;
-    a[11] = a[11] * z;
-    a[12] = a[12];
-    a[13] = a[13];
-    a[14] = a[14];
-    a[15] = a[15];
-    return this;
-};
-
-mat4.rotate = function (rad, axis) {
-    var a = this.val,
-        x = axis.x, y = axis.y, z = axis.z,
-        len = Math.sqrt(x * x + y * y + z * z),
-        s, c, t,
-        a00, a01, a02, a03,
-        a10, a11, a12, a13,
-        a20, a21, a22, a23,
-        b00, b01, b02,
-        b10, b11, b12,
-        b20, b21, b22;
-
-    if (Math.abs(len) < EPSILON) { return null; }
-    
-    len = 1 / len;
-    x *= len;
-    y *= len;
-    z *= len;
-
-    s = Math.sin(rad);
-    c = Math.cos(rad);
-    t = 1 - c;
-
-    a00 = a[0]; a01 = a[1]; a02 = a[2]; a03 = a[3];
-    a10 = a[4]; a11 = a[5]; a12 = a[6]; a13 = a[7];
-    a20 = a[8]; a21 = a[9]; a22 = a[10]; a23 = a[11];
-
-    // Construct the elements of the rotation matrix
-    b00 = x * x * t + c; b01 = y * x * t + z * s; b02 = z * x * t - y * s;
-    b10 = x * y * t - z * s; b11 = y * y * t + c; b12 = z * y * t + x * s;
-    b20 = x * z * t + y * s; b21 = y * z * t - x * s; b22 = z * z * t + c;
-
-    // Perform rotation-specific matrix multiplication
-    a[0] = a00 * b00 + a10 * b01 + a20 * b02;
-    a[1] = a01 * b00 + a11 * b01 + a21 * b02;
-    a[2] = a02 * b00 + a12 * b01 + a22 * b02;
-    a[3] = a03 * b00 + a13 * b01 + a23 * b02;
-    a[4] = a00 * b10 + a10 * b11 + a20 * b12;
-    a[5] = a01 * b10 + a11 * b11 + a21 * b12;
-    a[6] = a02 * b10 + a12 * b11 + a22 * b12;
-    a[7] = a03 * b10 + a13 * b11 + a23 * b12;
-    a[8] = a00 * b20 + a10 * b21 + a20 * b22;
-    a[9] = a01 * b20 + a11 * b21 + a21 * b22;
-    a[10] = a02 * b20 + a12 * b21 + a22 * b22;
-    a[11] = a03 * b20 + a13 * b21 + a23 * b22;
-    return this;
-};
-
-mat4.rotateX = function(rad) {
-    var a = this.val,
-        s = Math.sin(rad),
-        c = Math.cos(rad),
-        a10 = a[4],
-        a11 = a[5],
-        a12 = a[6],
-        a13 = a[7],
-        a20 = a[8],
-        a21 = a[9],
-        a22 = a[10],
-        a23 = a[11];
-
-    // Perform axis-specific matrix multiplication
-    a[4] = a10 * c + a20 * s;
-    a[5] = a11 * c + a21 * s;
-    a[6] = a12 * c + a22 * s;
-    a[7] = a13 * c + a23 * s;
-    a[8] = a20 * c - a10 * s;
-    a[9] = a21 * c - a11 * s;
-    a[10] = a22 * c - a12 * s;
-    a[11] = a23 * c - a13 * s;
-    return this;
-};
-
-mat4.rotateY = function(rad) {
-    var a = this.val,
-        s = Math.sin(rad),
-        c = Math.cos(rad),
-        a00 = a[0],
-        a01 = a[1],
-        a02 = a[2],
-        a03 = a[3],
-        a20 = a[8],
-        a21 = a[9],
-        a22 = a[10],
-        a23 = a[11];
-
-    // Perform axis-specific matrix multiplication
-    a[0] = a00 * c - a20 * s;
-    a[1] = a01 * c - a21 * s;
-    a[2] = a02 * c - a22 * s;
-    a[3] = a03 * c - a23 * s;
-    a[8] = a00 * s + a20 * c;
-    a[9] = a01 * s + a21 * c;
-    a[10] = a02 * s + a22 * c;
-    a[11] = a03 * s + a23 * c;
-    return this;
-};
-
-mat4.rotateZ = function (rad) {
-    var a = this.val,
-        s = Math.sin(rad),
-        c = Math.cos(rad),
-        a00 = a[0],
-        a01 = a[1],
-        a02 = a[2],
-        a03 = a[3],
-        a10 = a[4],
-        a11 = a[5],
-        a12 = a[6],
-        a13 = a[7];
-
-    // Perform axis-specific matrix multiplication
-    a[0] = a00 * c + a10 * s;
-    a[1] = a01 * c + a11 * s;
-    a[2] = a02 * c + a12 * s;
-    a[3] = a03 * c + a13 * s;
-    a[4] = a10 * c - a00 * s;
-    a[5] = a11 * c - a01 * s;
-    a[6] = a12 * c - a02 * s;
-    a[7] = a13 * c - a03 * s;
-    return this;
-};
-
-mat4.fromRotationTranslation = function (q, v) {
-    // Quaternion math
-    var out = this.val,
-        x = q.x, y = q.y, z = q.z, w = q.w,
-        x2 = x + x,
-        y2 = y + y,
-        z2 = z + z,
-
-        xx = x * x2,
-        xy = x * y2,
-        xz = x * z2,
-        yy = y * y2,
-        yz = y * z2,
-        zz = z * z2,
-        wx = w * x2,
-        wy = w * y2,
-        wz = w * z2;
-
-    out[0] = 1 - (yy + zz);
-    out[1] = xy + wz;
-    out[2] = xz - wy;
-    out[3] = 0;
-    out[4] = xy - wz;
-    out[5] = 1 - (xx + zz);
-    out[6] = yz + wx;
-    out[7] = 0;
-    out[8] = xz + wy;
-    out[9] = yz - wx;
-    out[10] = 1 - (xx + yy);
-    out[11] = 0;
-    out[12] = v.x;
-    out[13] = v.y;
-    out[14] = v.z;
-    out[15] = 1;
-    return this;
-};
-
-mat4.fromQuat = function (q) {
-    var out = this.val,
-        x = q.x, y = q.y, z = q.z, w = q.w,
-        x2 = x + x,
-        y2 = y + y,
-        z2 = z + z,
-
-        xx = x * x2,
-        xy = x * y2,
-        xz = x * z2,
-        yy = y * y2,
-        yz = y * z2,
-        zz = z * z2,
-        wx = w * x2,
-        wy = w * y2,
-        wz = w * z2;
-
-    out[0] = 1 - (yy + zz);
-    out[1] = xy + wz;
-    out[2] = xz - wy;
-    out[3] = 0;
-
-    out[4] = xy - wz;
-    out[5] = 1 - (xx + zz);
-    out[6] = yz + wx;
-    out[7] = 0;
-
-    out[8] = xz + wy;
-    out[9] = yz - wx;
-    out[10] = 1 - (xx + yy);
-    out[11] = 0;
-
-    out[12] = 0;
-    out[13] = 0;
-    out[14] = 0;
-    out[15] = 1;
-
-    return this;
-};
-
-
-/**
- * Generates a frustum matrix with the given bounds
- *
- * @param {Number} left Left bound of the frustum
- * @param {Number} right Right bound of the frustum
- * @param {Number} bottom Bottom bound of the frustum
- * @param {Number} top Top bound of the frustum
- * @param {Number} near Near bound of the frustum
- * @param {Number} far Far bound of the frustum
- * @returns {Matrix4} this for chaining
- */
-mat4.frustum = function (left, right, bottom, top, near, far) {
-    var out = this.val,
-        rl = 1 / (right - left),
-        tb = 1 / (top - bottom),
-        nf = 1 / (near - far);
-    out[0] = (near * 2) * rl;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = 0;
-    out[5] = (near * 2) * tb;
-    out[6] = 0;
-    out[7] = 0;
-    out[8] = (right + left) * rl;
-    out[9] = (top + bottom) * tb;
-    out[10] = (far + near) * nf;
-    out[11] = -1;
-    out[12] = 0;
-    out[13] = 0;
-    out[14] = (far * near * 2) * nf;
-    out[15] = 0;
-    return this;
-};
-
-
-/**
- * Generates a perspective projection matrix with the given bounds
- *
- * @param {number} fovy Vertical field of view in radians
- * @param {number} aspect Aspect ratio. typically viewport width/height
- * @param {number} near Near bound of the frustum
- * @param {number} far Far bound of the frustum
- * @returns {Matrix4} this for chaining
- */
-mat4.perspective = function (fovy, aspect, near, far) {
-    var out = this.val,
-        f = 1.0 / Math.tan(fovy / 2),
-        nf = 1 / (near - far);
-    out[0] = f / aspect;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = 0;
-    out[5] = f;
-    out[6] = 0;
-    out[7] = 0;
-    out[8] = 0;
-    out[9] = 0;
-    out[10] = (far + near) * nf;
-    out[11] = -1;
-    out[12] = 0;
-    out[13] = 0;
-    out[14] = (2 * far * near) * nf;
-    out[15] = 0;
-    return this;
-};
-
-/**
- * Generates a orthogonal projection matrix with the given bounds
- *
- * @param {number} left Left bound of the frustum
- * @param {number} right Right bound of the frustum
- * @param {number} bottom Bottom bound of the frustum
- * @param {number} top Top bound of the frustum
- * @param {number} near Near bound of the frustum
- * @param {number} far Far bound of the frustum
- * @returns {Matrix4} this for chaining
- */
-mat4.ortho = function (left, right, bottom, top, near, far) {
-    var out = this.val,
-        lr = 1 / (left - right),
-        bt = 1 / (bottom - top),
-        nf = 1 / (near - far);
-    out[0] = -2 * lr;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = 0;
-    out[5] = -2 * bt;
-    out[6] = 0;
-    out[7] = 0;
-    out[8] = 0;
-    out[9] = 0;
-    out[10] = 2 * nf;
-    out[11] = 0;
-    out[12] = (left + right) * lr;
-    out[13] = (top + bottom) * bt;
-    out[14] = (far + near) * nf;
-    out[15] = 1;
-    return this;
-};
-
-/**
- * Generates a look-at matrix with the given eye position, focal point, and up axis
- *
- * @param {Vector3} eye Position of the viewer
- * @param {Vector3} center Point the viewer is looking at
- * @param {Vector3} up vec3 pointing up
- * @returns {Matrix4} this for chaining
- */
-mat4.lookAt = function (eye, center, up) {
-    var out = this.val,
-
-        x0, x1, x2, y0, y1, y2, z0, z1, z2, len,
-        eyex = eye.x,
-        eyey = eye.y,
-        eyez = eye.z,
-        upx = up.x,
-        upy = up.y,
-        upz = up.z,
-        centerx = center.x,
-        centery = center.y,
-        centerz = center.z;
-
-    if (Math.abs(eyex - centerx) < EPSILON &&
-        Math.abs(eyey - centery) < EPSILON &&
-        Math.abs(eyez - centerz) < EPSILON) {
-        return this.identity();
-    }
-
-    z0 = eyex - centerx;
-    z1 = eyey - centery;
-    z2 = eyez - centerz;
-
-    len = 1 / Math.sqrt(z0 * z0 + z1 * z1 + z2 * z2);
-    z0 *= len;
-    z1 *= len;
-    z2 *= len;
-
-    x0 = upy * z2 - upz * z1;
-    x1 = upz * z0 - upx * z2;
-    x2 = upx * z1 - upy * z0;
-    len = Math.sqrt(x0 * x0 + x1 * x1 + x2 * x2);
-    if (!len) {
-        x0 = 0;
-        x1 = 0;
-        x2 = 0;
-    } else {
-        len = 1 / len;
-        x0 *= len;
-        x1 *= len;
-        x2 *= len;
-    }
-
-    y0 = z1 * x2 - z2 * x1;
-    y1 = z2 * x0 - z0 * x2;
-    y2 = z0 * x1 - z1 * x0;
-
-    len = Math.sqrt(y0 * y0 + y1 * y1 + y2 * y2);
-    if (!len) {
-        y0 = 0;
-        y1 = 0;
-        y2 = 0;
-    } else {
-        len = 1 / len;
-        y0 *= len;
-        y1 *= len;
-        y2 *= len;
-    }
-
-    out[0] = x0;
-    out[1] = y0;
-    out[2] = z0;
-    out[3] = 0;
-    out[4] = x1;
-    out[5] = y1;
-    out[6] = z1;
-    out[7] = 0;
-    out[8] = x2;
-    out[9] = y2;
-    out[10] = z2;
-    out[11] = 0;
-    out[12] = -(x0 * eyex + x1 * eyey + x2 * eyez);
-    out[13] = -(y0 * eyex + y1 * eyey + y2 * eyez);
-    out[14] = -(z0 * eyex + z1 * eyey + z2 * eyez);
-    out[15] = 1;
-
-    return this;
-};
-
-
-mat4.mul = mat4.multiply;
-
-mat4.idt = mat4.identity;
-
-//This is handy for Pool utilities, to "reset" a
-//shared object to its default state
-mat4.reset = mat4.idt;
-
-mat4.toString = function () {
-    var a = this.val;
-    return 'Matrix4(' + a[0] + ', ' + a[1] + ', ' + a[2] + ', ' + a[3] + ', ' +
-                    a[4] + ', ' + a[5] + ', ' + a[6] + ', ' + a[7] + ', ' +
-                    a[8] + ', ' + a[9] + ', ' + a[10] + ', ' + a[11] + ', ' + 
-                    a[12] + ', ' + a[13] + ', ' + a[14] + ', ' + a[15] + ')';
-};
-
-mat4.str = mat4.toString;
-
-module.exports = Matrix4;
-
-},{}],48:[function(_dereq_,module,exports){
-var Vector3 = _dereq_('./Vector3');
-var Matrix3 = _dereq_('./Matrix3');
-var common = _dereq_('./common');
-
-//some shared 'private' arrays
-var s_iNext = (typeof Int8Array !== 'undefined' ? new Int8Array([1,2,0]) : [1,2,0]);
-var tmp = (typeof Float32Array !== 'undefined' ? new Float32Array([0,0,0]) : [0,0,0]);
-
-var xUnitVec3 = new Vector3(1, 0, 0);
-var yUnitVec3 = new Vector3(0, 1, 0);
-var tmpvec = new Vector3();
-
-var tmpMat3 = new Matrix3();
-
-function Quaternion(x, y, z, w) {
-	if (typeof x === "object") {
-        this.x = x.x||0;
-        this.y = x.y||0;
-        this.z = x.z||0;
-        this.w = x.w||0;
-    } else {
-        this.x = x||0;
-        this.y = y||0;
-        this.z = z||0;
-        this.w = w||0;
-    }
-}
-
-var quat = Quaternion.prototype;
-
-//mixin common functions
-for (var k in common) {
-    quat[k] = common[k];
-}
-
-quat.rotationTo = function(a, b) {
-    var dot = a.x * b.x + a.y * b.y + a.z * b.z; //a.dot(b)
-    if (dot < -0.999999) {
-        if (tmpvec.copy(xUnitVec3).cross(a).len() < 0.000001)
-            tmpvec.copy(yUnitVec3).cross(a);
-        
-        tmpvec.normalize();
-        return this.setAxisAngle(tmpvec, Math.PI);
-    } else if (dot > 0.999999) {
-        this.x = 0;
-        this.y = 0;
-        this.z = 0;
-        this.w = 1;
-        return this;
-    } else {
-        tmpvec.copy(a).cross(b);
-        this.x = tmpvec.x;
-        this.y = tmpvec.y;
-        this.z = tmpvec.z;
-        this.w = 1 + dot;
-        return this.normalize();
-    }
-};
-
-quat.setAxes = function(view, right, up) {
-    var m = tmpMat3.val;
-    m[0] = right.x;
-    m[3] = right.y;
-    m[6] = right.z;
-
-    m[1] = up.x;
-    m[4] = up.y;
-    m[7] = up.z;
-
-    m[2] = -view.x;
-    m[5] = -view.y;
-    m[8] = -view.z;
-
-    return this.fromMat3(tmpMat3).normalize();
-};
-
-quat.identity = function() {
-    this.x = this.y = this.z = 0;
-    this.w = 1;
-    return this;
-};
-
-quat.setAxisAngle = function(axis, rad) {
-    rad = rad * 0.5;
-    var s = Math.sin(rad);
-    this.x = s * axis.x;
-    this.y = s * axis.y;
-    this.z = s * axis.z;
-    this.w = Math.cos(rad);
-    return this;
-};
-
-quat.multiply = function(b) {
-    var ax = this.x, ay = this.y, az = this.z, aw = this.w,
-        bx = b.x, by = b.y, bz = b.z, bw = b.w;
-
-    this.x = ax * bw + aw * bx + ay * bz - az * by;
-    this.y = ay * bw + aw * by + az * bx - ax * bz;
-    this.z = az * bw + aw * bz + ax * by - ay * bx;
-    this.w = aw * bw - ax * bx - ay * by - az * bz;
-    return this;
-};
-
-quat.slerp = function (b, t) {
-    // benchmarks:
-    //    http://jsperf.com/quaternion-slerp-implementations
-
-    var ax = this.x, ay = this.y, az = this.y, aw = this.y,
-        bx = b.x, by = b.y, bz = b.z, bw = b.w;
-
-    var        omega, cosom, sinom, scale0, scale1;
-
-    // calc cosine
-    cosom = ax * bx + ay * by + az * bz + aw * bw;
-    // adjust signs (if necessary)
-    if ( cosom < 0.0 ) {
-        cosom = -cosom;
-        bx = - bx;
-        by = - by;
-        bz = - bz;
-        bw = - bw;
-    }
-    // calculate coefficients
-    if ( (1.0 - cosom) > 0.000001 ) {
-        // standard case (slerp)
-        omega  = Math.acos(cosom);
-        sinom  = Math.sin(omega);
-        scale0 = Math.sin((1.0 - t) * omega) / sinom;
-        scale1 = Math.sin(t * omega) / sinom;
-    } else {        
-        // "from" and "to" quaternions are very close 
-        //  ... so we can do a linear interpolation
-        scale0 = 1.0 - t;
-        scale1 = t;
-    }
-    // calculate final values
-    this.x = scale0 * ax + scale1 * bx;
-    this.y = scale0 * ay + scale1 * by;
-    this.z = scale0 * az + scale1 * bz;
-    this.w = scale0 * aw + scale1 * bw;
-    return this;
-};
-
-quat.invert = function() {
-    var a0 = this.x, a1 = this.y, a2 = this.z, a3 = this.w,
-        dot = a0*a0 + a1*a1 + a2*a2 + a3*a3,
-        invDot = dot ? 1.0/dot : 0;
-    
-    // TODO: Would be faster to return [0,0,0,0] immediately if dot == 0
-
-    this.x = -a0*invDot;
-    this.y = -a1*invDot;
-    this.z = -a2*invDot;
-    this.w = a3*invDot;
-    return this;
-};
-
-quat.conjugate = function() {
-    this.x = -this.x;
-    this.y = -this.y;
-    this.z = -this.z;
-    return this;
-};
-
-quat.rotateX = function (rad) {
-    rad *= 0.5; 
-
-    var ax = this.x, ay = this.y, az = this.z, aw = this.w,
-        bx = Math.sin(rad), bw = Math.cos(rad);
-
-    this.x = ax * bw + aw * bx;
-    this.y = ay * bw + az * bx;
-    this.z = az * bw - ay * bx;
-    this.w = aw * bw - ax * bx;
-    return this;
-};
-
-quat.rotateY = function (rad) {
-    rad *= 0.5; 
-
-    var ax = this.x, ay = this.y, az = this.z, aw = this.w,
-        by = Math.sin(rad), bw = Math.cos(rad);
-
-    this.x = ax * bw - az * by;
-    this.y = ay * bw + aw * by;
-    this.z = az * bw + ax * by;
-    this.w = aw * bw - ay * by;
-    return this;
-};
-
-quat.rotateZ = function (rad) {
-    rad *= 0.5; 
-
-    var ax = this.x, ay = this.y, az = this.z, aw = this.w,
-        bz = Math.sin(rad), bw = Math.cos(rad);
-
-    this.x = ax * bw + ay * bz;
-    this.y = ay * bw - ax * bz;
-    this.z = az * bw + aw * bz;
-    this.w = aw * bw - az * bz;
-    return this;
-};
-
-quat.calculateW = function () {
-    var x = this.x, y = this.y, z = this.z;
-
-    this.x = x;
-    this.y = y;
-    this.z = z;
-    this.w = -Math.sqrt(Math.abs(1.0 - x * x - y * y - z * z));
-    return this;
-};
-
-quat.fromMat3 = function(mat) {
-    // benchmarks:
-    //    http://jsperf.com/typed-array-access-speed
-    //    http://jsperf.com/conversion-of-3x3-matrix-to-quaternion
-
-    // Algorithm in Ken Shoemake's article in 1987 SIGGRAPH course notes
-    // article "Quaternion Calculus and Fast Animation".
-    var m = mat.val,
-        fTrace = m[0] + m[4] + m[8];
-    var fRoot;
-
-    if ( fTrace > 0.0 ) {
-        // |w| > 1/2, may as well choose w > 1/2
-        fRoot = Math.sqrt(fTrace + 1.0);  // 2w
-        this.w = 0.5 * fRoot;
-        fRoot = 0.5/fRoot;  // 1/(4w)
-        this.x = (m[7]-m[5])*fRoot;
-        this.y = (m[2]-m[6])*fRoot;
-        this.z = (m[3]-m[1])*fRoot;
-    } else {
-        // |w| <= 1/2
-        var i = 0;
-        if ( m[4] > m[0] )
-          i = 1;
-        if ( m[8] > m[i*3+i] )
-          i = 2;
-        var j = s_iNext[i];
-        var k = s_iNext[j];
-            
-        //This isn't quite as clean without array access...
-        fRoot = Math.sqrt(m[i*3+i]-m[j*3+j]-m[k*3+k] + 1.0);
-        tmp[i] = 0.5 * fRoot;
-
-        fRoot = 0.5 / fRoot;
-        tmp[j] = (m[j*3+i] + m[i*3+j]) * fRoot;
-        tmp[k] = (m[k*3+i] + m[i*3+k]) * fRoot;
-
-        this.x = tmp[0];
-        this.y = tmp[1];
-        this.z = tmp[2];
-        this.w = (m[k*3+j] - m[j*3+k]) * fRoot;
-    }
-    
-    return this;
-};
-
-quat.idt = quat.identity;
-
-quat.sub = quat.subtract;
-
-quat.mul = quat.multiply;
-
-quat.len = quat.length;
-
-quat.lenSq = quat.lengthSq;
-
-//This is handy for Pool utilities, to "reset" a
-//shared object to its default state
-quat.reset = quat.idt;
-
-
-quat.toString = function() {
-    return 'Quaternion(' + this.x + ', ' + this.y + ', ' + this.z + ', ' + this.w + ')';
-};
-
-quat.str = quat.toString;
-
-module.exports = Quaternion;
-},{"./Matrix3":46,"./Vector3":50,"./common":52}],49:[function(_dereq_,module,exports){
-function Vector2(x, y) {
-	if (typeof x === "object") {
-        this.x = x.x||0;
-        this.y = x.y||0;
-    } else {
-        this.x = x||0;
-        this.y = y||0;
-    }
-}
-
-//shorthand it for better minification
-var vec2 = Vector2.prototype;
-
-/**
- * Returns a new instance of Vector2 with
- * this vector's components. 
- * @return {Vector2} a clone of this vector
- */
-vec2.clone = function() {
-    return new Vector2(this.x, this.y);
-};
-
-/**
- * Copies the x, y components from the specified
- * Vector. Any undefined components from `otherVec`
- * will default to zero.
- * 
- * @param  {otherVec} the other Vector2 to copy
- * @return {Vector2}  this, for chaining
- */
-vec2.copy = function(otherVec) {
-    this.x = otherVec.x||0;
-    this.y = otherVec.y||0;
-    return this;
-};
-
-/**
- * A convenience function to set the components of
- * this vector as x and y. Falsy or undefined
- * parameters will default to zero.
- *
- * You can also pass a vector object instead of
- * individual components, to copy the object's components.
- * 
- * @param {Number} x the x component
- * @param {Number} y the y component
- * @return {Vector2}  this, for chaining
- */
-vec2.set = function(x, y) {
-    if (typeof x === "object") {
-        this.x = x.x||0;
-        this.y = x.y||0;
-    } else {
-        this.x = x||0;
-        this.y = y||0;
-    }
-    return this;
-};
-
-vec2.add = function(v) {
-    this.x += v.x;
-    this.y += v.y;
-    return this;
-};
-
-vec2.subtract = function(v) {
-    this.x -= v.x;
-    this.y -= v.y;
-    return this;
-};
-
-vec2.multiply = function(v) {
-    this.x *= v.x;
-    this.y *= v.y;
-    return this;
-};
-
-vec2.scale = function(s) {
-    this.x *= s;
-    this.y *= s;
-    return this;
-};
-
-vec2.divide = function(v) {
-    this.x /= v.x;
-    this.y /= v.y;
-    return this;
-};
-
-vec2.negate = function() {
-    this.x = -this.x;
-    this.y = -this.y;
-    return this;
-};
-
-vec2.distance = function(v) {
-    var dx = v.x - this.x,
-        dy = v.y - this.y;
-    return Math.sqrt(dx*dx + dy*dy);
-};
-
-vec2.distanceSq = function(v) {
-    var dx = v.x - this.x,
-        dy = v.y - this.y;
-    return dx*dx + dy*dy;
-};
-
-vec2.length = function() {
-    var x = this.x,
-        y = this.y;
-    return Math.sqrt(x*x + y*y);
-};
-
-vec2.lengthSq = function() {
-    var x = this.x,
-        y = this.y;
-    return x*x + y*y;
-};
-
-vec2.normalize = function() {
-    var x = this.x,
-        y = this.y;
-    var len = x*x + y*y;
-    if (len > 0) {
-        len = 1 / Math.sqrt(len);
-        this.x = x*len;
-        this.y = y*len;
-    }
-    return this;
-};
-
-vec2.dot = function(v) {
-    return this.x * v.x + this.y * v.y;
-};
-
-//Unlike Vector3, this returns a scalar
-//http://allenchou.net/2013/07/cross-product-of-2d-vectors/
-vec2.cross = function(v) {
-    return this.x * v.y - this.y * v.x;
-};
-
-vec2.lerp = function(v, t) {
-    var ax = this.x,
-        ay = this.y;
-    t = t||0;
-    this.x = ax + t * (v.x - ax);
-    this.y = ay + t * (v.y - ay);
-    return this;
-};
-
-vec2.transformMat3 = function(mat) {
-    var x = this.x, y = this.y, m = mat.val;
-    this.x = m[0] * x + m[2] * y + m[4];
-    this.y = m[1] * x + m[3] * y + m[5];
-    return this;
-};
-
-vec2.transformMat4 = function(mat) {
-    var x = this.x, 
-        y = this.y,
-        m = mat.val;
-    this.x = m[0] * x + m[4] * y + m[12];
-    this.y = m[1] * x + m[5] * y + m[13];
-    return this;
-};
-
-vec2.reset = function() {
-    this.x = 0;
-    this.y = 0;
-    return this;
-};
-
-vec2.sub = vec2.subtract;
-
-vec2.mul = vec2.multiply;
-
-vec2.div = vec2.divide;
-
-vec2.dist = vec2.distance;
-
-vec2.distSq = vec2.distanceSq;
-
-vec2.len = vec2.length;
-
-vec2.lenSq = vec2.lengthSq;
-
-vec2.toString = function() {
-    return 'Vector2(' + this.x + ', ' + this.y + ')';
-};
-
-vec2.random = function(scale) {
-    scale = scale || 1.0;
-    var r = Math.random() * 2.0 * Math.PI;
-    this.x = Math.cos(r) * scale;
-    this.y = Math.sin(r) * scale;
-    return this;
-};
-
-vec2.str = vec2.toString;
-
-module.exports = Vector2;
-},{}],50:[function(_dereq_,module,exports){
-function Vector3(x, y, z) {
-    if (typeof x === "object") {
-        this.x = x.x||0;
-        this.y = x.y||0;
-        this.z = x.z||0;
-    } else {
-        this.x = x||0;
-        this.y = y||0;
-        this.z = z||0;
-    }
-}
-
-//shorthand it for better minification
-var vec3 = Vector3.prototype;
-
-vec3.clone = function() {
-    return new Vector3(this.x, this.y, this.z);
-};
-
-vec3.copy = function(otherVec) {
-    this.x = otherVec.x;
-    this.y = otherVec.y;
-    this.z = otherVec.z;
-    return this;
-};
-
-vec3.set = function(x, y, z) {
-    if (typeof x === "object") {
-        this.x = x.x||0;
-        this.y = x.y||0;
-        this.z = x.z||0;
-    } else {
-        this.x = x||0;
-        this.y = y||0;
-        this.z = z||0;
-    }
-    return this;
-};
-
-vec3.add = function(v) {
-    this.x += v.x;
-    this.y += v.y;
-    this.z += v.z;
-    return this;
-};
-
-vec3.subtract = function(v) {
-    this.x -= v.x;
-    this.y -= v.y;
-    this.z -= v.z;
-    return this;
-};
-
-vec3.multiply = function(v) {
-    this.x *= v.x;
-    this.y *= v.y;
-    this.z *= v.z;
-    return this;
-};
-
-vec3.scale = function(s) {
-    this.x *= s;
-    this.y *= s;
-    this.z *= s;
-    return this;
-};
-
-vec3.divide = function(v) {
-    this.x /= v.x;
-    this.y /= v.y;
-    this.z /= v.z;
-    return this;
-};
-
-vec3.negate = function() {
-    this.x = -this.x;
-    this.y = -this.y;
-    this.z = -this.z;
-    return this;
-};
-
-vec3.distance = function(v) {
-    var dx = v.x - this.x,
-        dy = v.y - this.y,
-        dz = v.z - this.z;
-    return Math.sqrt(dx*dx + dy*dy + dz*dz);
-};
-
-vec3.distanceSq = function(v) {
-    var dx = v.x - this.x,
-        dy = v.y - this.y,
-        dz = v.z - this.z;
-    return dx*dx + dy*dy + dz*dz;
-};
-
-vec3.length = function() {
-    var x = this.x,
-        y = this.y,
-        z = this.z;
-    return Math.sqrt(x*x + y*y + z*z);
-};
-
-vec3.lengthSq = function() {
-    var x = this.x,
-        y = this.y,
-        z = this.z;
-    return x*x + y*y + z*z;
-};
-
-vec3.normalize = function() {
-    var x = this.x,
-        y = this.y,
-        z = this.z;
-    var len = x*x + y*y + z*z;
-    if (len > 0) {
-        len = 1 / Math.sqrt(len);
-        this.x = x*len;
-        this.y = y*len;
-        this.z = z*len;
-    }
-    return this;
-};
-
-vec3.dot = function(v) {
-    return this.x * v.x + this.y * v.y + this.z * v.z;
-};
-
-vec3.cross = function(v) {
-    var ax = this.x, ay = this.y, az = this.z,
-        bx = v.x, by = v.y, bz = v.z;
-
-    this.x = ay * bz - az * by;
-    this.y = az * bx - ax * bz;
-    this.z = ax * by - ay * bx;
-    return this;
-};
-
-vec3.lerp = function(v, t) {
-    var ax = this.x,
-        ay = this.y,
-        az = this.z;
-    t = t||0;
-    this.x = ax + t * (v.x - ax);
-    this.y = ay + t * (v.y - ay);
-    this.z = az + t * (v.z - az);
-    return this;
-};
-
-vec3.transformMat4 = function(mat) {
-    var x = this.x, y = this.y, z = this.z, m = mat.val;
-    this.x = m[0] * x + m[4] * y + m[8] * z + m[12];
-    this.y = m[1] * x + m[5] * y + m[9] * z + m[13];
-    this.z = m[2] * x + m[6] * y + m[10] * z + m[14];
-    return this;
-};
-
-vec3.transformMat3 = function(mat) {
-    var x = this.x, y = this.y, z = this.z, m = mat.val;
-    this.x = x * m[0] + y * m[3] + z * m[6];
-    this.y = x * m[1] + y * m[4] + z * m[7];
-    this.z = x * m[2] + y * m[5] + z * m[8];
-    return this;
-};
-
-vec3.transformQuat = function(q) {
-    // benchmarks: http://jsperf.com/quaternion-transform-vec3-implementations
-    var x = this.x, y = this.y, z = this.z,
-        qx = q.x, qy = q.y, qz = q.z, qw = q.w,
-
-        // calculate quat * vec
-        ix = qw * x + qy * z - qz * y,
-        iy = qw * y + qz * x - qx * z,
-        iz = qw * z + qx * y - qy * x,
-        iw = -qx * x - qy * y - qz * z;
-
-    // calculate result * inverse quat
-    this.x = ix * qw + iw * -qx + iy * -qz - iz * -qy;
-    this.y = iy * qw + iw * -qy + iz * -qx - ix * -qz;
-    this.z = iz * qw + iw * -qz + ix * -qy - iy * -qx;
-    return this;
-};
-
-/**
- * Multiplies this Vector3 by the specified matrix, 
- * applying a W divide. This is useful for projection,
- * e.g. unprojecting a 2D point into 3D space.
- *
- * @method  prj
- * @param {Matrix4} the 4x4 matrix to multiply with 
- * @return {Vector3} this object for chaining
- */
-vec3.project = function(mat) {
-    var x = this.x,
-        y = this.y,
-        z = this.z,
-        m = mat.val,
-        a00 = m[0], a01 = m[1], a02 = m[2], a03 = m[3],
-        a10 = m[4], a11 = m[5], a12 = m[6], a13 = m[7],
-        a20 = m[8], a21 = m[9], a22 = m[10], a23 = m[11],
-        a30 = m[12], a31 = m[13], a32 = m[14], a33 = m[15];
-
-    var l_w = 1 / (x * a03 + y * a13 + z * a23 + a33);
-
-    this.x = (x * a00 + y * a10 + z * a20 + a30) * l_w; 
-    this.y = (x * a01 + y * a11 + z * a21 + a31) * l_w; 
-    this.z = (x * a02 + y * a12 + z * a22 + a32) * l_w;
-    return this;
-};
-
-/**
- * Unproject this point from 2D space to 3D space.
- * The point should have its x and y properties set to
- * 2D screen space, and the z either at 0 (near plane)
- * or 1 (far plane). The provided matrix is assumed to already
- * be combined, i.e. projection * view * model.
- *
- * After this operation, this vector's (x, y, z) components will
- * represent the unprojected 3D coordinate.
- * 
- * @param  {Vector4} viewport          screen x, y, width and height in pixels
- * @param  {Matrix4} invProjectionView combined projection and view matrix
- * @return {Vector3}                   this object, for chaining
- */
-vec3.unproject = function(viewport, invProjectionView) {
-    var viewX = viewport.x,
-        viewY = viewport.y,
-        viewWidth = viewport.z,
-        viewHeight = viewport.w;
-    
-    var x = this.x, 
-        y = this.y,
-        z = this.z;
-
-    x = x - viewX;
-    y = viewHeight - y - 1;
-    y = y - viewY;
-
-    this.x = (2 * x) / viewWidth - 1;
-    this.y = (2 * y) / viewHeight - 1;
-    this.z = 2 * z - 1;
-
-    return this.project(invProjectionView);
-};
-
-vec3.random = function(scale) {
-    scale = scale || 1.0;
-
-    var r = Math.random() * 2.0 * Math.PI;
-    var z = (Math.random() * 2.0) - 1.0;
-    var zScale = Math.sqrt(1.0-z*z) * scale;
-    
-    this.x = Math.cos(r) * zScale;
-    this.y = Math.sin(r) * zScale;
-    this.z = z * scale;
-    return this;
-};
-
-vec3.reset = function() {
-    this.x = 0;
-    this.y = 0;
-    this.z = 0;
-    return this;
-};
-
-
-vec3.sub = vec3.subtract;
-
-vec3.mul = vec3.multiply;
-
-vec3.div = vec3.divide;
-
-vec3.dist = vec3.distance;
-
-vec3.distSq = vec3.distanceSq;
-
-vec3.len = vec3.length;
-
-vec3.lenSq = vec3.lengthSq;
-
-vec3.toString = function() {
-    return 'Vector3(' + this.x + ', ' + this.y + ', ' + this.z + ')';
-};
-
-vec3.str = vec3.toString;
-
-module.exports = Vector3;
-},{}],51:[function(_dereq_,module,exports){
-var common = _dereq_('./common');
-
-function Vector4(x, y, z, w) {
-	if (typeof x === "object") {
-        this.x = x.x||0;
-        this.y = x.y||0;
-        this.z = x.z||0;
-        this.w = x.w||0;
-    } else {
-        this.x = x||0;
-        this.y = y||0;
-        this.z = z||0;
-        this.w = w||0;
-    }
-}
-
-//shorthand it for better minification
-var vec4 = Vector4.prototype;
-
-//mixin common functions
-for (var k in common) {
-    vec4[k] = common[k];
-}
-
-vec4.clone = function() {
-    return new Vector4(this.x, this.y, this.z, this.w);
-};
-
-vec4.multiply = function(v) {
-    this.x *= v.x;
-    this.y *= v.y;
-    this.z *= v.z;
-    this.w *= v.w;
-    return this;
-};
-
-vec4.divide = function(v) {
-    this.x /= v.x;
-    this.y /= v.y;
-    this.z /= v.z;
-    this.w /= v.w;
-    return this;
-};
-
-vec4.distance = function(v) {
-    var dx = v.x - this.x,
-        dy = v.y - this.y,
-        dz = v.z - this.z,
-        dw = v.w - this.w;
-    return Math.sqrt(dx*dx + dy*dy + dz*dz + dw*dw);
-};
-
-vec4.distanceSq = function(v) {
-    var dx = v.x - this.x,
-        dy = v.y - this.y,
-        dz = v.z - this.z,
-        dw = v.w - this.w;
-    return dx*dx + dy*dy + dz*dz + dw*dw;
-};
-
-vec4.negate = function() {
-    this.x = -this.x;
-    this.y = -this.y;
-    this.z = -this.z;
-    this.w = -this.w;
-    return this;
-};
-
-vec4.transformMat4 = function(mat) {
-    var m = mat.val, x = this.x, y = this.y, z = this.z, w = this.w;
-    this.x = m[0] * x + m[4] * y + m[8] * z + m[12] * w;
-    this.y = m[1] * x + m[5] * y + m[9] * z + m[13] * w;
-    this.z = m[2] * x + m[6] * y + m[10] * z + m[14] * w;
-    this.w = m[3] * x + m[7] * y + m[11] * z + m[15] * w;
-    return this;
-};
-
-//// TODO: is this really the same as Vector3 ??
-///  Also, what about this:
-///  http://molecularmusings.wordpress.com/2013/05/24/a-faster-quaternion-vector-multiplication/
-vec4.transformQuat = function(q) {
-    // benchmarks: http://jsperf.com/quaternion-transform-vec3-implementations
-    var x = this.x, y = this.y, z = this.z,
-        qx = q.x, qy = q.y, qz = q.z, qw = q.w,
-
-        // calculate quat * vec
-        ix = qw * x + qy * z - qz * y,
-        iy = qw * y + qz * x - qx * z,
-        iz = qw * z + qx * y - qy * x,
-        iw = -qx * x - qy * y - qz * z;
-
-    // calculate result * inverse quat
-    this.x = ix * qw + iw * -qx + iy * -qz - iz * -qy;
-    this.y = iy * qw + iw * -qy + iz * -qx - ix * -qz;
-    this.z = iz * qw + iw * -qz + ix * -qy - iy * -qx;
-    return this;
-};
-
-vec4.random = function(scale) {
-    scale = scale || 1.0;
-
-    //Not spherical; should fix this for more uniform distribution
-    this.x = (Math.random() * 2 - 1) * scale;
-    this.y = (Math.random() * 2 - 1) * scale;
-    this.z = (Math.random() * 2 - 1) * scale;
-    this.w = (Math.random() * 2 - 1) * scale;
-    return this;
-};
-
-vec4.reset = function() {
-    this.x = 0;
-    this.y = 0;
-    this.z = 0;
-    this.w = 0;
-    return this;
-};
-
-vec4.sub = vec4.subtract;
-
-vec4.mul = vec4.multiply;
-
-vec4.div = vec4.divide;
-
-vec4.dist = vec4.distance;
-
-vec4.distSq = vec4.distanceSq;
-
-vec4.len = vec4.length;
-
-vec4.lenSq = vec4.lengthSq;
-
-vec4.toString = function() {
-    return 'Vector4(' + this.x + ', ' + this.y + ', ' + this.z + ', ' + this.w + ')';
-};
-
-vec4.str = vec4.toString;
-
-module.exports = Vector4;
-},{"./common":52}],52:[function(_dereq_,module,exports){
-//common vec4 functions
-module.exports = {
-    
-/**
- * Copies the x, y, z, w components from the specified
- * Vector. Unlike most other operations, this function
- * will default undefined components on `otherVec` to zero.
- * 
- * @method  copy
- * @param  {otherVec} the other Vector4 to copy
- * @return {Vector}  this, for chaining
- */
-
-
-/**
- * A convenience function to set the components of
- * this vector as x, y, z, w. Falsy or undefined
- * parameters will default to zero.
- *
- * You can also pass a vector object instead of
- * individual components, to copy the object's components.
- * 
- * @method  set
- * @param {Number} x the x component
- * @param {Number} y the y component
- * @param {Number} z the z component
- * @param {Number} w the w component
- * @return {Vector2}  this, for chaining
- */
-
-/**
- * Adds the components of the other Vector4 to
- * this vector.
- * 
- * @method add
- * @param  {Vector4} otherVec other vector, right operand
- * @return {Vector2}  this, for chaining
- */
-
-/**
- * Subtracts the components of the other Vector4
- * from this vector. Aliased as `sub()`
- * 
- * @method  subtract
- * @param  {Vector4} otherVec other vector, right operand
- * @return {Vector2}  this, for chaining
- */
-
-/**
- * Multiplies the components of this Vector4
- * by a scalar amount.
- *
- * @method  scale
- * @param {Number} s the scale to multiply by
- * @return {Vector4} this, for chaining
- */
-
-/**
- * Returns the magnitude (length) of this vector.
- *
- * Aliased as `len()`
- * 
- * @method  length
- * @return {Number} the length of this vector
- */
-
-/**
- * Returns the squared magnitude (length) of this vector.
- *
- * Aliased as `lenSq()`
- * 
- * @method  lengthSq
- * @return {Number} the squared length of this vector
- */
-
-/**
- * Normalizes this vector to a unit vector.
- * @method normalize
- * @return {Vector4}  this, for chaining
- */
-
-/**
- * Returns the dot product of this vector
- * and the specified Vector4.
- * 
- * @method dot
- * @return {Number} the dot product
- */
-    copy: function(otherVec) {
-        this.x = otherVec.x||0;
-        this.y = otherVec.y||0;
-        this.z = otherVec.z||0;
-        this.w = otherVec.w||0;
-        return this;
-    },
-
-    set: function(x, y, z, w) {
-        if (typeof x === "object") {
-            this.x = x.x||0;
-            this.y = x.y||0;
-            this.z = x.z||0;
-            this.w = x.w||0;
-        } else {
-            this.x = x||0;
-            this.y = y||0;
-            this.z = z||0;
-            this.w = w||0;
-
-        }
-        return this;
-    },
-
-    add: function(v) {
-        this.x += v.x;
-        this.y += v.y;
-        this.z += v.z;
-        this.w += v.w;
-        return this;
-    },
-
-    subtract: function(v) {
-        this.x -= v.x;
-        this.y -= v.y;
-        this.z -= v.z;
-        this.w -= v.w;
-        return this;
-    },
-
-    scale: function(s) {
-        this.x *= s;
-        this.y *= s;
-        this.z *= s;
-        this.w *= s;
-        return this;
-    },
-
-
-    length: function() {
-        var x = this.x,
-            y = this.y,
-            z = this.z,
-            w = this.w;
-        return Math.sqrt(x*x + y*y + z*z + w*w);
-    },
-
-    lengthSq: function() {
-        var x = this.x,
-            y = this.y,
-            z = this.z,
-            w = this.w;
-        return x*x + y*y + z*z + w*w;
-    },
-
-    normalize: function() {
-        var x = this.x,
-            y = this.y,
-            z = this.z,
-            w = this.w;
-        var len = x*x + y*y + z*z + w*w;
-        if (len > 0) {
-            len = 1 / Math.sqrt(len);
-            this.x = x*len;
-            this.y = y*len;
-            this.z = z*len;
-            this.w = w*len;
-        }
-        return this;
-    },
-
-    dot: function(v) {
-        return this.x * v.x + this.y * v.y + this.z * v.z + this.w * v.w;
-    },
-
-    lerp: function(v, t) {
-        var ax = this.x,
-            ay = this.y,
-            az = this.z,
-            aw = this.w;
-        t = t||0;
-        this.x = ax + t * (v.x - ax);
-        this.y = ay + t * (v.y - ay);
-        this.z = az + t * (v.z - az);
-        this.w = aw + t * (v.w - aw);
-        return this;
-    }
-};
-},{}],53:[function(_dereq_,module,exports){
-module.exports = {
-    Vector2: _dereq_('./Vector2'),
-    Vector3: _dereq_('./Vector3'),
-    Vector4: _dereq_('./Vector4'),
-    Matrix3: _dereq_('./Matrix3'),
-    Matrix4: _dereq_('./Matrix4'),
-    Quaternion: _dereq_('./Quaternion')
-};
-},{"./Matrix3":46,"./Matrix4":47,"./Quaternion":48,"./Vector2":49,"./Vector3":50,"./Vector4":51}],54:[function(_dereq_,module,exports){
+},{"interpolation":56,"klasse":44,"vecmath":64}],56:[function(require,module,exports){
+module.exports=require(19)
+},{}],57:[function(require,module,exports){
+module.exports=require(24)
+},{}],58:[function(require,module,exports){
+module.exports=require(25)
+},{}],59:[function(require,module,exports){
+module.exports=require(26)
+},{"./Matrix3":57,"./Vector3":61,"./common":63}],60:[function(require,module,exports){
+module.exports=require(27)
+},{}],61:[function(require,module,exports){
+module.exports=require(28)
+},{}],62:[function(require,module,exports){
+module.exports=require(29)
+},{"./common":63}],63:[function(require,module,exports){
+module.exports=require(30)
+},{}],64:[function(require,module,exports){
+arguments[4][31][0].apply(exports,arguments)
+},{"./Matrix3":57,"./Matrix4":58,"./Quaternion":59,"./Vector2":60,"./Vector3":61,"./Vector4":62}],65:[function(require,module,exports){
+
+// not implemented
+// The reason for having an empty file and not throwing is to allow
+// untraditional implementation of this module.
 
 },{}]},{},[2])
 (2)
 });
+;

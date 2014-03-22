@@ -25,7 +25,7 @@ var AA_SIZE = 2048;
 
 var WebGLRenderer = new Class({
 
-    initialize: function(canvas, vert, frag, useAA) {
+    initialize: function(canvas, vert, frag, useAA, vignetteShader) {
         this.context = new WebGLContext(canvas.width, canvas.height, canvas);
 
         this.mesh = null;
@@ -38,8 +38,8 @@ var WebGLRenderer = new Class({
 
 
         if (this.useAA) {
-            // SpriteBatch.DEFAULT_FRAG_SHADER = fxaaFrag;
-            this.batch = new SpriteBatch(this.context);
+            SpriteBatch.DEFAULT_FRAG_SHADER = vignetteShader;
+            this.batch = new SpriteBatch(this.context, 1);
             // this.batch.shader.bind();
             // this.batch.shader.setUniformf("texcoordOffset", 1.0/AA_SIZE, 1.0/AA_SIZE);
 

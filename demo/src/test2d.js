@@ -45,7 +45,7 @@ domready(function() {
         fontSize: 50,
         // simplify: 50,
         // steps: 30,
-    }, TweenLite);
+    }, TweenLite, dat);
     textManager.resize(width, height);
     if (webgl)
         textManager.initWebGL(context.gl, useAA);
@@ -78,6 +78,7 @@ domready(function() {
         textManager.updateCamera();
     }
     resize();
+    textManager.onCreated = resize;
 
     window.addEventListener("resize", resize);
 

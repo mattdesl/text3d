@@ -36,7 +36,17 @@ var force = new Vector3();
 var fs = require('fs');
 var vert = fs.readFileSync( __dirname + '/shaders/text.vert', 'utf8' );
 var frag = fs.readFileSync( __dirname + '/shaders/text.frag', 'utf8' );
-var fxaa = fs.readFileSync( __dirname + '/shaders/fxaa.frag', 'utf8' );
+var vignetteFrag = fs.readFileSync( __dirname + '/shaders/vignette.frag', 'utf8' );
+
+
+
+/////// LIST OF THINGS TO REMOVE BEFORE PRODUCTION
+/// - Reduce Mesh vert size since no lines is necessary
+/// - Remove preset / GUI
+/// - Remove dat.gui.v2 from main
+/// - Remove cache bust from main
+/// - failIfMajorPerformanceCaveat
+
 
 ///////
 ///GET RID OF THESE FOR PRODUCTION
@@ -107,10 +117,11 @@ function easeOutExpo (t, b, c, d) {
 
 var TextManager = new Class({
 
-    initialize: function(text, options, TweenLite) {
+    initialize: function(text, options, TweenLite, datGUI) {
         this.options = this.toDefaults(options);
         this.text = text;
 
+        this.datGUI = datGUI;
         this.TweenLite = TweenLite;
 
         this.world = new World();
@@ -130,6 +141,7 @@ var TextManager = new Class({
         this.create();
 
         this.setupUI();
+        this.onCreated = null;
     },
 
     resetOptions: function() {
@@ -142,19 +154,31 @@ var TextManager = new Class({
     },
 
     setupUI: function() {
-        var gui = new dat.GUI({
+        if (!this.datGUI)
+            return;
+
+        var gui = new this.datGUI.GUI({
             load: Preset0
         });
         gui.remember(this.options);
         // gui.useLocalStorage = false;
+        this.gui = gui;
 
         var mesh = gui.addFolder('Text Mesh');
         mesh.add(this.options, 'fill');
         // mesh.add(this.options, 'fontSize', 12, 150);
         mesh.add(this.options, 'steps', 3, 30);
         mesh.add(this.options, 'simplify', 0, 50);
+        mesh.add(this.options, 'letterSpacing', -10, 10);
+        mesh.add(this.options, 'spaceWidth', 0, 50);
+        mesh.add(this.options, 'align', [
+            Text3D.Align.LEFT, Text3D.Align.CENTER, Text3D.Align.RIGHT
+        ]); 
+
         mesh.add(this, 'create');
+        mesh.add(this, 'reset');
         mesh.open();
+        this.guiMesh = mesh;
 
         var physics = gui.addFolder('Physics');
         physics.add(this.options, 'spinStrength', 0, 30);
@@ -173,7 +197,11 @@ var TextManager = new Class({
         reset.add(this.options, 'resetByDistance');
         reset.open();
 
-
+        //wtf
+        document.querySelector(".ac").style.zIndex = 100000;
+        document.querySelector(".save-row").style.width = "260px";
+        document.querySelector(".gears").style.width = "18px";
+        document.querySelector(".gears").style.height = "18px";
     },
 
     toDefaults: function(options) {
@@ -189,6 +217,9 @@ var TextManager = new Class({
         options.resetWhileIdle = typeof options.resetWhileIdle === "boolean" ? options.resetWhileIdle : true;
         options.resetByDistance = typeof options.resetByDistance === "boolean" ? options.resetByDistance : true;
         options.rigidness = typeof options.rigidness === "number" ? options.rigidness : 0.0;
+        options.align = options.align || Text3D.Align.CENTER;
+        options.letterSpacing = options.letterSpacing || 0;
+        options.spaceWidth = typeof options.spaceWidth === "number" ? options.spaceWidth : (25);
 
         options.fill = typeof options.fill === "boolean" ? options.fill : true;
 
@@ -200,6 +231,27 @@ var TextManager = new Class({
         options.steps = typeof options.steps === "number" ? options.steps : 10;
         options.simplify = typeof options.simplify === "number" ? options.simplify : 50;
         return options;
+    },
+
+    //Resets the MESH parameters only...
+    reset: function() {
+        var options = this.options;
+        options.align = undefined;
+        options.letterSpacing = undefined;
+        options.spaceWidth = undefined;
+        options.fill = undefined;
+        options.steps = undefined;
+        options.simplify = undefined;
+        this.toDefaults(options);
+        this.create();
+
+        if (this.guiMesh) {
+            // Iterate over all controllers
+            for (var i in this.guiMesh.__controllers) {
+                this.guiMesh.__controllers[i].updateDisplay();
+            }
+        }
+            
     },
 
     create: function() {
@@ -220,9 +272,12 @@ var TextManager = new Class({
 
         Glyph.SAVE_CONTOUR = false;
 
+        var spaceWidth = Math.round(options.spaceWidth || 0);
+        var letterSpacing = Math.round(options.letterSpacing || 0);
+        var align = options.align;
 
         this.text = text;
-        this.textMesh = new Text3D(text, this.face, this.fontSize, steps, simplify);
+        this.textMesh = new Text3D(text, this.face, this.fontSize, steps, simplify, align, spaceWidth, letterSpacing);
         
 
 
@@ -254,6 +309,9 @@ var TextManager = new Class({
         this.textMesh.destroy();
 
         this._createRandomForces();
+
+        if (typeof this.onCreated === "function")
+            this.onCreated();
     },
 
     finishTweenReset: function(index) {
@@ -613,7 +671,7 @@ var TextManager = new Class({
     },
 
     initWebGL: function(canvas, antialiasing) {        
-        this.webGLRenderer = new WebGLRenderer(canvas, vert, frag, antialiasing, fxaa);
+        this.webGLRenderer = new WebGLRenderer(canvas, vert, frag, antialiasing, vignetteFrag);
         this.webGLRenderer.setup(this.world.particles);
         
         this.resize(canvas.width, canvas.height);
