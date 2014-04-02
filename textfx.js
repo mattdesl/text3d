@@ -130,7 +130,7 @@ var vignetteFrag = "#ifdef GL_ES\nprecision mediump float;\n#endif\n\nuniform sa
 
 ///////
 ///GET RID OF THESE FOR PRODUCTION
-var Preset0 = JSON.parse( "{\n  \"preset\": \"Crows\",\n  \"closed\": false,\n  \"remembered\": {\n    \"Default\": {\n      \"0\": {\n        \"fill\": true,\n        \"steps\": 10.44442529726004,\n        \"simplify\": 50,\n        \"spinStrength\": 10,\n        \"mouseStrength\": 5,\n        \"mouseRadius\": 15,\n        \"minMouseMotion\": 2,\n        \"rigidness\": 0,\n        \"resetDuration\": 1,\n        \"resetDelay\": 1.191108047561606,\n        \"resetLinear\": false,\n        \"resetWhileIdle\": false,\n        \"resetByDistance\": true\n      }\n    },\n    \"Crows\": {\n      \"0\": {\n        \"fill\": true,\n        \"steps\": 10.44442529726004,\n        \"simplify\": 50,\n        \"spinStrength\": 11.91108047561606,\n        \"mouseStrength\": 0.6617266930897812,\n        \"mouseRadius\": 27.461657763225915,\n        \"minMouseMotion\": 2,\n        \"rigidness\": 0,\n        \"resetDuration\": 1,\n        \"resetDelay\": 1.0146475960709977,\n        \"resetLinear\": false,\n        \"resetWhileIdle\": false,\n        \"resetByDistance\": true\n      }\n    },\n    \"Fling\": {\n      \"0\": {\n        \"fill\": true,\n        \"steps\": 10.44442529726004,\n        \"simplify\": 50,\n        \"spinStrength\": 17.86662071342409,\n        \"mouseStrength\": 3.308633465448906,\n        \"mouseRadius\": 15,\n        \"minMouseMotion\": 0.38600723763570566,\n        \"rigidness\": 0.04632086851628468,\n        \"resetDuration\": 1.146992934688954,\n        \"resetDelay\": 1.191108047561606,\n        \"resetLinear\": false,\n        \"resetWhileIdle\": false,\n        \"resetByDistance\": true\n      }\n    }\n  },\n  \"folders\": {\n    \"Text Mesh\": {\n      \"preset\": \"Default\",\n      \"closed\": false,\n      \"folders\": {}\n    },\n    \"Physics\": {\n      \"preset\": \"Default\",\n      \"closed\": false,\n      \"folders\": {}\n    },\n    \"Reset Animation\": {\n      \"preset\": \"Default\",\n      \"closed\": false,\n      \"folders\": {}\n    }\n  }\n}" );
+var Preset0 = JSON.parse( "{\n  \"preset\": \"Fling\",\n  \"closed\": false,\n  \"remembered\": {\n    \"Default\": {\n      \"0\": {\n        \"fill\": true,\n        \"steps\": 10,\n        \"simplify\": 50,\n        \"letterSpacing\": 0,\n        \"spaceWidth\": 25,\n        \"align\": \"CENTER\",\n        \"spinStrength\": 10,\n        \"mouseStrength\": 5,\n        \"mouseRadius\": 15,\n        \"minMouseMotion\": 2,\n        \"rigidness\": 0,\n        \"resetDuration\": 1,\n        \"resetDelay\": 1.191108047561606,\n        \"resetLinear\": false,\n        \"resetWhileIdle\": false,\n        \"resetByDistance\": true\n      }\n    },\n    \"Crows\": {\n      \"0\": {\n        \"fill\": true,\n        \"steps\": 10.44442529726004,\n        \"simplify\": 50,\n        \"letterSpacing\": 0,\n        \"spaceWidth\": 25,\n        \"align\": \"CENTER\",\n        \"spinStrength\": 11.91108047561606,\n        \"mouseStrength\": 0.6617266930897812,\n        \"mouseRadius\": 27.461657763225915,\n        \"minMouseMotion\": 2,\n        \"rigidness\": 0,\n        \"resetDuration\": 1,\n        \"resetDelay\": 1.0146475960709977,\n        \"resetLinear\": false,\n        \"resetWhileIdle\": false,\n        \"resetByDistance\": true\n      }\n    },\n    \"Fling\": {\n      \"0\": {\n        \"fill\": true,\n        \"steps\": 10.44442529726004,\n        \"simplify\": 50,\n        \"letterSpacing\": 0,\n        \"spaceWidth\": 25,\n        \"align\": \"CENTER\",\n        \"spinStrength\": 17.86662071342409,\n        \"mouseStrength\": 3.308633465448906,\n        \"mouseRadius\": 15,\n        \"minMouseMotion\": 0.38600723763570566,\n        \"rigidness\": 0.04632086851628468,\n        \"resetDuration\": 1.146992934688954,\n        \"resetDelay\": 1.191108047561606,\n        \"resetLinear\": false,\n        \"resetWhileIdle\": false,\n        \"resetByDistance\": true\n      }\n    }\n  },\n  \"folders\": {\n    \"Text Mesh\": {\n      \"preset\": \"Default\",\n      \"closed\": false,\n      \"folders\": {}\n    },\n    \"Physics\": {\n      \"preset\": \"Default\",\n      \"closed\": false,\n      \"folders\": {}\n    },\n    \"Reset Animation\": {\n      \"preset\": \"Default\",\n      \"closed\": false,\n      \"folders\": {}\n    }\n  }\n}" );
 
 //draws the particles as a triangle list
 function drawTriangles(context, particles, camera, fill, noIntersect) {
@@ -159,9 +159,9 @@ function drawTriangles(context, particles, camera, fill, noIntersect) {
 
         if (noIntersect) {
             context.closePath();
-            if (fill)
+            if (fill) {
                 context.fill();
-            else
+            } else
                 context.stroke();
         } else {
             context.lineTo(ox, oy);
@@ -221,6 +221,7 @@ var TextManager = new Class({
         this.create();
 
         this.setupUI();
+        this.onCreated = null;
     },
 
     resetOptions: function() {
@@ -241,14 +242,23 @@ var TextManager = new Class({
         });
         gui.remember(this.options);
         // gui.useLocalStorage = false;
+        this.gui = gui;
 
         var mesh = gui.addFolder('Text Mesh');
         mesh.add(this.options, 'fill');
         // mesh.add(this.options, 'fontSize', 12, 150);
         mesh.add(this.options, 'steps', 3, 30);
         mesh.add(this.options, 'simplify', 0, 50);
+        mesh.add(this.options, 'letterSpacing', -10, 10);
+        mesh.add(this.options, 'spaceWidth', 0, 50);
+        mesh.add(this.options, 'align', [
+            Text3D.Align.LEFT, Text3D.Align.CENTER, Text3D.Align.RIGHT
+        ]); 
+
         mesh.add(this, 'create');
+        mesh.add(this, 'reset');
         mesh.open();
+        this.guiMesh = mesh;
 
         var physics = gui.addFolder('Physics');
         physics.add(this.options, 'spinStrength', 0, 30);
@@ -287,6 +297,9 @@ var TextManager = new Class({
         options.resetWhileIdle = typeof options.resetWhileIdle === "boolean" ? options.resetWhileIdle : true;
         options.resetByDistance = typeof options.resetByDistance === "boolean" ? options.resetByDistance : true;
         options.rigidness = typeof options.rigidness === "number" ? options.rigidness : 0.0;
+        options.align = options.align || Text3D.Align.CENTER;
+        options.letterSpacing = options.letterSpacing || 0;
+        options.spaceWidth = typeof options.spaceWidth === "number" ? options.spaceWidth : 25;
 
         options.fill = typeof options.fill === "boolean" ? options.fill : true;
 
@@ -298,6 +311,27 @@ var TextManager = new Class({
         options.steps = typeof options.steps === "number" ? options.steps : 10;
         options.simplify = typeof options.simplify === "number" ? options.simplify : 50;
         return options;
+    },
+
+    //Resets the MESH parameters only...
+    reset: function() {
+        var options = this.options;
+        options.align = undefined;
+        options.letterSpacing = undefined;
+        options.spaceWidth = undefined;
+        options.fill = undefined;
+        options.steps = undefined;
+        options.simplify = undefined;
+        this.toDefaults(options);
+        this.create();
+
+        if (this.guiMesh) {
+            // Iterate over all controllers
+            for (var i in this.guiMesh.__controllers) {
+                this.guiMesh.__controllers[i].updateDisplay();
+            }
+        }
+            
     },
 
     create: function() {
@@ -318,9 +352,12 @@ var TextManager = new Class({
 
         Glyph.SAVE_CONTOUR = false;
 
+        var spaceWidth = Math.round(options.spaceWidth || 0);
+        var letterSpacing = Math.round(options.letterSpacing || 0);
+        var align = options.align;
 
         this.text = text;
-        this.textMesh = new Text3D(text, this.face, this.fontSize, steps, simplify);
+        this.textMesh = new Text3D(text, this.face, this.fontSize, steps, simplify, align, spaceWidth, letterSpacing);
         
 
 
@@ -352,6 +389,9 @@ var TextManager = new Class({
         this.textMesh.destroy();
 
         this._createRandomForces();
+
+        if (typeof this.onCreated === "function")
+            this.onCreated();
     },
 
     finishTweenReset: function(index) {
@@ -783,10 +823,10 @@ var TextManager = new Class({
         var noIntersect = false;
 
         var style = "rgba("+ ~~(this.color.r*255)+","+ ~~(this.color.g*255) +","+ ~~(this.color.b*255) + "," + this.color.a +")";
-        if (fill)
-            context.fillStyle = style;
-        else
-            context.strokeStyle = style;
+        // if (fill)
+        context.fillStyle = style;
+        // else
+        context.strokeStyle = style;
 
         drawTriangles(context, this.world.particles, this.camera, fill, noIntersect);
     },
@@ -1463,24 +1503,29 @@ var tmpMat = new Matrix4();
  */
 var Text3D = new Class({
 
-	initialize: function(text, face, size, steps, simplify) {
+	initialize: function(text, face, size, steps, simplify, align, spaceWidth, letterSpacing) {
         size = typeof size === "number" ? size : Glyph.DEFAULT_SIZE;
 
         this.size = size;
 		this.text = "";
 		this.face = face;
 
-        this.align = 
+        this.align = align || Text3D.Align.LEFT;
 
         this.glyphs = [];
 
-        var wMetric = util.getGlyphMetrics(face, size, 'W');
-        this.spaceWidth = wMetric ? wMetric.xadvance : size/2;
+        if (typeof spaceWidth !== "number") {
+            var wMetric = util.getGlyphMetrics(face, size, 'W');
+            this.spaceWidth = wMetric ? wMetric.xadvance : size/2;
+        } else
+            this.spaceWidth = spaceWidth;
+        this.letterSpacing = letterSpacing||0;
+
         this.lineHeight = util.getFaceHeight(face, size);
 
         this.bounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
         
-		this.setText(text, steps, simplify);
+        this.setText(text, steps, simplify);
 	},
 
 
@@ -1556,7 +1601,7 @@ var Text3D = new Class({
 
 
             if (i > 0)
-                xoff += metricsList[i-1].xadvance;
+                xoff += metricsList[i-1].xadvance + this.letterSpacing;
 
             curWidth = Math.max(curWidth, xoff + glyph.bounds.minX + (glyph.bounds.maxX-glyph.bounds.minX) )
             rowWidths[rowWidths.length-1] = curWidth;
@@ -1580,7 +1625,11 @@ var Text3D = new Class({
             //determine how much to center it from the left
             var width = rowWidths[row];
 
-            xoff += (maxWidth-width)/2;
+            //align center
+            if (this.align === Text3D.Align.CENTER)
+                xoff += (maxWidth-width)/2;
+            else if (this.align === Text3D.Align.RIGHT)
+                xoff += (maxWidth-width);
 
             //create a transformation for this glyph
             tmpMat.idt();
@@ -1619,7 +1668,7 @@ var Text3D = new Class({
     },
 });
 
-Text3D.ALIGN = {
+Text3D.Align = {
     CENTER: 'CENTER',
     LEFT: 'LEFT',
     RIGHT: 'RIGHT'
