@@ -12,7 +12,8 @@
     "raf.js": "0.0.3",
     "domready": "~0.2.13",
     "interpolation": "0.0.0",
-    "brfs": "~1.0.0"
+    "brfs": "~1.0.0",
+    "canvas-testbed": "0.0.1"
   },
   "dependencies": {
     "klasse": "~1.0.6",
@@ -20,7 +21,28 @@
     "shape2d": "0.0.0",
     "kami": "~0.5.0",
     "cam3d": "~0.1.1",
-    "vecmath": "~0.1.0",
-    "kami-mesh": "git://github.com/mattdesl/kami-mesh"
-  }
+    "vecmath": "^0.1.1",
+    "kami-mesh": "git://github.com/mattdesl/kami-mesh",
+    "fontutils": "0.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mattdesl/text3d.git"
+  },
+  "keywords": [
+    "text",
+    "3d",
+    "2d",
+    "outline",
+    "decompose",
+    "font",
+    "truetype",
+    "freetype",
+    "otf",
+    "ttf"
+  ],
+  "bugs": {
+    "url": "https://github.com/mattdesl/text3d/issues"
+  },
+  "homepage": "https://github.com/mattdesl/text3d"
 }
