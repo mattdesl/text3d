@@ -1,16 +1,13 @@
-var Matrix3 = require('vecmath').Matrix3;
 var Vector2 = require('vecmath').Vector2;
 
 var test = require('canvas-testbed');
 var Lato = require('./fonts/Lato.json');
 
+var toGlyphMatrix = require('./toGlyphMatrix');
 var decompose = require('../lib/decompose');
 
-var util = require('fontutils');
-var glyphMatrix = new Matrix3();
+
 var tmpVec = new Vector2();
-
-
 var glyph = Lato.glyphs["a"];
 var shapes = decompose(glyph, {
 	steps: 14,
@@ -19,11 +16,11 @@ var shapes = decompose(glyph, {
 //We can optionally simplify the path like so.
 //Remember, they are in font units (EM)
 for (var i=0; i<shapes.length; i++) {
-	shapes[i] = shapes[i].simplify( Lato.units_per_EM/72 );
+	shapes[i] = shapes[i].simplify( Lato.units_per_EM/72 * 0.5 );
 }
 
 //Setup a simple glyph matrix to scale from EM to screen pixels...
-setupGlyphMatrix(20, 100, Lato, glyph, 128, glyphMatrix);
+var glyphMatrix = toGlyphMatrix(20, 100, Lato, glyph, 128);
 
 function render(context, width, height) {
 	context.clearRect(0, 0, width, height);
@@ -40,16 +37,6 @@ function render(context, width, height) {
 			context.fillRect(tmpVec.x-sz/2, tmpVec.y-sz/2, sz, sz);
 		}
 	}
-}
-
-//setup our matrix
-function setupGlyphMatrix(x, y, font, glyph, fontSize, outMatrix) {
-	var pxSize = util.pointsToPixels(fontSize, font.resolution);
-
-	var pointScale = (32/font.size) * pxSize / font.units_per_EM;
-	outMatrix.idt();
-	outMatrix.translate( tmpVec.set(x, y) );
-	outMatrix.scale( tmpVec.set(pointScale, -pointScale) );
 }
 
 //render a single frame to the canvas testbed
